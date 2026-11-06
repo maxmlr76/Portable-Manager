@@ -1,7 +1,7 @@
 THIRD-PARTY NOTICES
 ===================
 
-Maxtrix Portable Organizer itself is under the MIT license (LICENSE). The
+Maxtrix Portable Manager itself is under the MIT license (LICENSE). The
 "Maxtrix" name and logo are excluded (TRADEMARKS.md). The release package also
 contains or uses the following software.
 

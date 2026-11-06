@@ -1,4 +1,4 @@
-//! Maxtrix Portable Organizer — native GUI over the engine.
+//! Maxtrix Portable Manager — native GUI over the engine.
 //!
 //! Views (Entdecken / Installiert / Updates / Kategorien) are computed in Rust
 //! from a single source-of-truth state and pushed into the Slint model. All state

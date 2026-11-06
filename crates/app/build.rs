@@ -38,12 +38,12 @@ fn main() {
     {
         let mut res = winresource::WindowsResource::new();
         res.set_icon("assets/maxtrix.ico");
-        res.set("ProductName", "Maxtrix Portable Organizer");
-        res.set("FileDescription", "Maxtrix Portable Organizer");
+        res.set("ProductName", "Maxtrix Portable Manager");
+        res.set("FileDescription", "Maxtrix Portable Manager");
         res.set("CompanyName", "Maxtrix");
         res.set("LegalCopyright", "\u{00A9} Maxtrix");
-        res.set("OriginalFilename", "PortableOrganizer.exe");
-        res.set("InternalName", "PortableOrganizer");
+        res.set("OriginalFilename", "PortableManager.exe");
+        res.set("InternalName", "PortableManager");
         if let Err(e) = res.compile() {
             println!("cargo:warning=Icon/Metadaten nicht eingebettet (rc.exe fehlt?): {e}");
         }

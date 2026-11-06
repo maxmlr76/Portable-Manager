@@ -1,4 +1,4 @@
-# Assembles the stick-ready layout into dist\PortableOrganizer\.
+# Assembles the stick-ready layout into dist\PortableManager\.
 # Run:  cargo build --release -p maxtrix-app   (once), then this script.
 # Optional Signierung: -Pfx <datei> [-Password <pw>] | -Thumbprint <hash> | -SelfSigned
 # -OutDir <ordner>: anderes Ziel statt dist (z. B. wenn die App gerade aus dist laeuft).
@@ -15,7 +15,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $rel  = Join-Path $root "target\release\maxtrix-app.exe"
 if (-not $OutDir) { $OutDir = Join-Path $root "dist" }
 $OutDir = [IO.Path]::GetFullPath($OutDir, (Get-Location).Path)
-$dist = Join-Path $OutDir "PortableOrganizer"
+$dist = Join-Path $OutDir "PortableManager"
 
 if (-not (Test-Path $rel)) {
     throw "Release-Build fehlt: $rel  ->  cargo build --release -p maxtrix-app"
@@ -39,7 +39,7 @@ New-Item -ItemType Directory -Force (Join-Path $dist "Tools") | Out-Null
 $licenses = Join-Path $dist "licenses"
 New-Item -ItemType Directory -Force $licenses | Out-Null
 
-Copy-Item $rel (Join-Path $dist "PortableOrganizer.exe")
+Copy-Item $rel (Join-Path $dist "PortableManager.exe")
 foreach ($name in "7z.exe", "7z.dll", "License.txt") {
     Copy-Item (Join-Path $root "vendor\7-zip\$name") (Join-Path $dist "vendor\7-zip\")
 }
@@ -54,7 +54,7 @@ Set-Content (Join-Path $dist "Tools\_hier-landen-deine-tools.txt") `
     "Ueber die App installierte Tools landen hier unter <Kategorie>\<Tool>\."
 
 # Optional: EXE signieren, bevor sie ins Zip wandert.
-$exe = Join-Path $dist "PortableOrganizer.exe"
+$exe = Join-Path $dist "PortableManager.exe"
 $sign = Join-Path $PSScriptRoot "sign.ps1"
 if ($Pfx) {
     & $sign -File $exe -Pfx $Pfx -Password $Password
@@ -65,14 +65,14 @@ if ($Pfx) {
 }
 
 # Zip for easy transfer
-$zip = Join-Path $OutDir "PortableOrganizer.zip"
+$zip = Join-Path $OutDir "PortableManager.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path $dist -DestinationPath $zip -Force
 
 # Report
-$exeMb = [math]::Round((Get-Item (Join-Path $dist "PortableOrganizer.exe")).Length / 1MB, 1)
+$exeMb = [math]::Round((Get-Item (Join-Path $dist "PortableManager.exe")).Length / 1MB, 1)
 $zipMb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
-Write-Output "PortableOrganizer.exe : $exeMb MB"
+Write-Output "PortableManager.exe : $exeMb MB"
 Write-Output "Paket (zip)           : $zipMb MB  ->  $zip"
 Write-Output "Ordner                : $dist"
 Write-Output "--- Inhalt ---"

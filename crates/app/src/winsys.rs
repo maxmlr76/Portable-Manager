@@ -64,8 +64,8 @@ mod imp {
 
     pub fn acquire_instance() -> Start {
         let key = instance_key();
-        let mutex_name = wide(&format!("Local\\MaxtrixPortableOrganizer-{key}"));
-        let event_name = wide(&format!("Local\\MaxtrixPortableOrganizer-{key}-show"));
+        let mutex_name = wide(&format!("Local\\MaxtrixPortableManager-{key}"));
+        let event_name = wide(&format!("Local\\MaxtrixPortableManager-{key}-show"));
         unsafe {
             let mutex = CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr());
             if !mutex.is_null() && GetLastError() == ERROR_ALREADY_EXISTS {

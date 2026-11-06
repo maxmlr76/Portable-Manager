@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use crate::Cancelled;
 
-const UA: &str = "MaxtrixPortableOrganizer/0.1 (+https://maxtrix)";
+const UA: &str = "MaxtrixPortableManager/0.1 (+https://maxtrix)";
 
 /// Shared HTTP agent with timeouts, so a stalled server can't block an install
 /// forever (the read timeout applies per read, not to the whole download).

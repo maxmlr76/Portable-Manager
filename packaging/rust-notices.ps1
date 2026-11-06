@@ -14,7 +14,7 @@ try {
 }
 
 $sw = [Text.StringBuilder]::new()
-[void]$sw.AppendLine("LICENSES OF THE RUST CRATES COMPILED INTO MAXTRIX PORTABLE ORGANIZER")
+[void]$sw.AppendLine("LICENSES OF THE RUST CRATES COMPILED INTO MAXTRIX PORTABLE MANAGER")
 [void]$sw.AppendLine("")
 $texts = [ordered]@{}
 $count = 0

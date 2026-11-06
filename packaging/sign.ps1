@@ -1,5 +1,5 @@
 <#
-  sign.ps1 - Authenticode-Signierung der PortableOrganizer.exe.
+  sign.ps1 - Authenticode-Signierung der PortableManager.exe.
 
   Signieren allein entfernt die SmartScreen-Warnung NICHT sofort. Was hilft:
     * EV-Zertifikat (Hardware-Token/HSM)  -> SmartScreen sofort sauber.
@@ -28,7 +28,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $File) {
   $cand = @(
-    (Join-Path $root "dist\PortableOrganizer\PortableOrganizer.exe"),
+    (Join-Path $root "dist\PortableManager\PortableManager.exe"),
     (Join-Path $root "target\release\maxtrix-app.exe")
   ) | Where-Object { Test-Path $_ }
   if (-not $cand) { throw "Keine EXE gefunden. Erst bauen/packen oder -File angeben." }

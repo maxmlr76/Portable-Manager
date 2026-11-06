@@ -34,7 +34,7 @@ pwsh packaging\sign.ps1 -Thumbprint A1B2C3D4...
 pwsh packaging\sign.ps1 -SelfSigned
 ```
 
-Ohne `-File` signiert das Skript `dist\PortableOrganizer\PortableOrganizer.exe`
+Ohne `-File` signiert das Skript `dist\PortableManager\PortableManager.exe`
 (sonst `target\release\maxtrix-app.exe`). Mit `-File <pfad>` gezielt eine EXE.
 
 ## In einem Rutsch bauen + signieren + packen

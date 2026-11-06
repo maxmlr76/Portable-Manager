@@ -1,4 +1,4 @@
-MAXTRIX PORTABLE ORGANIZER
+MAXTRIX PORTABLE MANAGER
 ==========================
 
 Ein portabler Verwalter fuer deine portablen Tools. Laeuft direkt vom Stick,
@@ -6,7 +6,7 @@ ohne Installation.
 
 INHALT DIESES ORDNERS
 ---------------------
-  PortableOrganizer.exe   Die App. Doppelklick zum Starten.
+  PortableManager.exe   Die App. Doppelklick zum Starten.
   vendor\7-zip\           Mitgeliefertes 7-Zip (entpackt Installer / .7z beim Download).
   Tools\                  Hier liegen deine Tools (je Kategorie ein Unterordner).
   LIESMICH.txt            Diese Datei.
@@ -16,8 +16,8 @@ INHALT DIESES ORDNERS
 AUF DEN STICK BRINGEN
 ---------------------
   Kopiere den GESAMTEN Inhalt dieses Ordners in die Wurzel deines Sticks,
-  z. B. nach E:\  -- sodass dort E:\PortableOrganizer.exe, E:\vendor\ und
-  E:\Tools\ liegen. Dann PortableOrganizer.exe doppelklicken.
+  z. B. nach E:\  -- sodass dort E:\PortableManager.exe, E:\vendor\ und
+  E:\Tools\ liegen. Dann PortableManager.exe doppelklicken.
 
   Der Laufwerksbuchstabe ist egal -- die App merkt sich Pfade relativ zum Stick.
 

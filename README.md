@@ -1,4 +1,4 @@
-# Maxtrix Portable Organizer
+# Maxtrix Portable Manager
 
 A portable tool launcher and library for your IT USB stick. It runs from the stick without
 installation, downloads portable tools from their publishers, verifies them, keeps them up
@@ -22,12 +22,12 @@ The user interface is currently in German. Windows only for now.
 
 ## Download
 
-Get `PortableOrganizer.zip` from the [releases page](../../releases), copy its contents to the
-root of your stick and start `PortableOrganizer.exe`.
+Get `PortableManager.zip` from the [releases page](../../releases), copy its contents to the
+root of your stick and start `PortableManager.exe`.
 
 The executable is not code-signed yet, so Windows SmartScreen may warn you on first start.
 Release builds are made by GitHub Actions from the tagged source. You can check where a
-file came from with `gh attestation verify PortableOrganizer.zip --repo maxmlr76/Portable-Manager`.
+file came from with `gh attestation verify PortableManager.zip --repo maxmlr76/Portable-Manager`.
 
 ## Build from source
 

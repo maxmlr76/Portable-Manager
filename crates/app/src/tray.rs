@@ -49,7 +49,7 @@ mod imp {
         let menu = Menu::new();
         let mi_mini = MenuItem::new("Schnellstart (Mini-Ansicht)", true, None);
         let mi_open = MenuItem::new("Hauptfenster öffnen", true, None);
-        let mi_about = MenuItem::new("Über Maxtrix Portable Organizer", true, None);
+        let mi_about = MenuItem::new("Über Maxtrix Portable Manager", true, None);
         let mi_quit = MenuItem::new("Beenden", true, None);
         // What the window's X does (asked once at the first close; changeable here).
         let keep = crate::close_action().as_deref() != Some("quit");
@@ -82,7 +82,7 @@ mod imp {
             // the menu on left click too and still reports the click: picking
             // "Schnellstart" then opened the window and the click closed it again.
             .with_menu_on_left_click(false)
-            .with_tooltip("Maxtrix Portable Organizer")
+            .with_tooltip("Maxtrix Portable Manager")
             .with_icon(icon)
             .build()
             .ok()?;
