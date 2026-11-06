@@ -1,0 +1,42 @@
+# Checks the dependencies on every push (cargo-deny): only these licenses, only crates.io.
+[graph]
+targets = ["x86_64-pc-windows-msvc"]
+
+[licenses]
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "bzip2-1.0.6",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+    # The Slint license this project uses. It requires the attribution in the
+    # "Ueber" dialog and on the README.
+    "LicenseRef-Slint-Royalty-free-2.0",
+]
+confidence-threshold = 0.9
+
+[advisories]
+# Any new vulnerability fails the build. These are only marked "unmaintained", have no
+# replacement, and come in through Slint, so they cannot be changed from here.
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste: unmaintained, indirect through Slint" },
+    { id = "RUSTSEC-2026-0441", reason = "pin-utils: unmaintained, indirect" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz: unmaintained, indirect through Slint" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser: unmaintained, indirect through Slint" },
+]
+
+[bans]
+multiple-versions = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

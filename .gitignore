@@ -1,0 +1,37 @@
+# Allow-list: at the top level everything is ignored unless named here.
+# This keeps downloaded tools, backups, screenshots and private notes out by
+# default. A new top-level file only gets published if it is added below on purpose.
+/*
+!/.github/
+!/.gitattributes
+!/.gitignore
+!/CONTRIBUTING.md
+!/Cargo.lock
+!/Cargo.toml
+!/LICENSE
+!/README.md
+!/SECURITY.md
+!/THIRD-PARTY-NOTICES.txt
+!/TRADEMARKS.md
+!/crates/
+!/deny.toml
+!/docs/
+!/packaging/
+
+# Internal candidate list, not documentation
+/docs/top100.md
+
+# Build output inside allowed folders
+target/
+
+# Never publish these, wherever they turn up
+.maxtrix-*.json
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+.env
+.env.*
+Thumbs.db
+.DS_Store

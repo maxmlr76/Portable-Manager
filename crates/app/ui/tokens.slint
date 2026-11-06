@@ -1,0 +1,73 @@
+// MAXTRIX-Design-Tokens für die App.
+//
+// Dieselben Werte wie auf der Website maxtrix.dev (css/tokens.css, dunkler Satz).
+// Ändert sich dort etwas, hier nachziehen.
+//
+// Farbregel der Marke: nur Chrome, Graphit, Mono. Einzige Ausnahme ist `danger`
+// für Fehler. Status wird über die Form gezeigt (voller Punkt / Ring / gestrichelt),
+// nie über eine Farbe. Keine Hex-Werte in app.slint — alles kommt von hier.
+
+export global Mx {
+    // Graphit-Stufen (dunkel → hell)
+    out property <color> foot: #0a0c0f;
+    out property <color> bg: #0d0f13;
+    out property <color> panel: #111318;
+    out property <color> graphit: #16181d;
+    out property <color> panel-2: #1b1e25;
+    out property <color> line: #252a32;
+    out property <color> line-strong: #363c47;
+    out property <color> scrim: #05070a;
+
+    // Text
+    out property <color> text: #f2f3f5;
+    out property <color> muted: #9aa3ae;
+    out property <color> faint: #7a8390;
+
+    // Chrome
+    out property <color> steel: #8e98a4;
+    out property <color> silver: #c6cdd5;
+    out property <color> on-chrome: #16181d;
+    out property <brush> chrome-text: @linear-gradient(180deg, #f5f7f9 0%, #c6cdd5 45%, #8e98a4 58%, #eef1f4 100%);
+    out property <brush> chrome-btn: @linear-gradient(180deg, #fafbfc 0%, #d3d9df 40%, #9aa5b1 55%, #cfd6de 75%, #eef1f4 100%);
+    out property <brush> chrome-btn-pressed: @linear-gradient(180deg, #d3d9df 0%, #aab3bd 40%, #808b98 55%, #aab3bd 75%, #c6cdd5 100%);
+    // Für den Software-Renderer: er kann Verläufe nicht mit runden Ecken kombinieren.
+    out property <color> chrome-flat: #d3d9df;
+    out property <color> chrome-flat-hover: #eef1f4;
+    out property <color> chrome-flat-pressed: #9aa5b1;
+
+    // Teile („Bits") — das gemeinsame Motiv: offen → läuft → geprüft
+    out property <color> bit-empty: #232830;
+    out property <color> bit-moving: #6f7986;
+    out property <color> bit-done: #e7ebef;
+
+    // Funktional
+    out property <color> danger: #e8877d;
+    out property <color> danger-soft: #e8877d24;
+    out property <color> danger-line: #e8877d66;
+
+    // Schleier aus Silber (Hover, Auswahl, Fokusring)
+    out property <color> tint-03: #c6cdd508;
+    out property <color> tint-07: #c6cdd512;
+    out property <color> tint-12: #c6cdd51f;
+    out property <color> tint-22: #c6cdd538;
+    out property <color> wash: #ffffff05;
+
+    // Messraster im Hintergrund
+    out property <color> grid-major: #9aa3ae12;
+    out property <color> grid-minor: #9aa3ae09;
+
+    // Karten: senkrechter Verlauf panel-2 → panel
+    out property <brush> card: @linear-gradient(180deg, #1b1e25 0%, #111318 100%);
+    out property <color> card-flat: #16181d;
+    out property <color> shadow: #00000080;
+    out property <color> shine: #ffffff8c;
+
+    // Form
+    out property <length> radius-s: 6px;
+    out property <length> radius: 10px;
+    out property <length> radius-l: 14px;
+
+    // Bewegung: ein Rhythmus für alles
+    out property <duration> dur-fast: 120ms;
+    out property <duration> dur: 220ms;
+}

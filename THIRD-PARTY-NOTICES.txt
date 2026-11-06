@@ -1,0 +1,40 @@
+THIRD-PARTY NOTICES
+===================
+
+Maxtrix Portable Organizer itself is under the MIT license (LICENSE). The
+"Maxtrix" name and logo are excluded (TRADEMARKS.md). The release package also
+contains or uses the following software.
+
+7-Zip
+-----
+vendor\7-zip\7z.exe and 7z.dll, copyright Igor Pavlov. Unmodified.
+License: GNU LGPL, parts under the BSD 3-clause license, and the unRAR code under
+the unRAR license restriction. Full text: vendor\7-zip\License.txt
+Source code: https://www.7-zip.org and https://github.com/ip7z/7zip
+
+Slint
+-----
+User interface toolkit, copyright SixtyFPS GmbH. Used under the "Slint Royalty-free
+Desktop, Mobile, and Web Applications License 2.0". Full text in
+licenses\RUST-CRATES.txt. The attribution is shown in the app under "Ueber" and on
+the project page. https://slint.dev
+
+Fonts (embedded in the program)
+-------------------------------
+Saira, copyright 2020 The Saira Project Authors. SIL Open Font License 1.1:
+licenses\OFL-Saira.txt
+Audiowide, copyright (c) 2012 Brian J. Bonislawsky DBA Astigmatic (AOETI), Reserved
+Font Names "Audiowide". SIL Open Font License 1.1: licenses\OFL-Audiowide.txt
+
+Rust libraries
+--------------
+All libraries compiled into the program, with their licenses and copyright notices,
+are listed in licenses\RUST-CRATES.txt.
+
+Services and downloaded tools
+-----------------------------
+The tool catalog relies on the manifests of the Scoop project (https://scoop.sh) and
+its search service. The tools you choose to install are NOT part of this package: they
+are downloaded directly from their publishers and remain under their own licenses.
+You are responsible for complying with those licenses and for using security tools
+only on systems you own or are authorized to test.

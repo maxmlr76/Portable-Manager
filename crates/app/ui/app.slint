@@ -1,0 +1,2110 @@
+import { AboutSlint, ScrollView } from "std-widgets.slint";
+import { Mx } from "tokens.slint";
+// Marken-Schriften: Erst dieser Import bettet sie ein (ohne ihn: Ersatzschrift).
+import "Saira.ttf";
+import "Audiowide-Regular.ttf";
+
+struct ToolItem {
+    id: int,
+    kind: string,       // "tool" | "feature" | "header" | "updateall"
+    name: string,       // Scoop id (lists, callbacks)
+    title: string,      // display name ("7-Zip", "Notepad++")
+    version: string,
+    summary: string,
+    category: string,
+    status: string,     // "available" | "installing" | "installed" | "update" | "broken" | "error"
+    progress: float,
+    detail: string,
+    meta: string,       // quiet info line when there is no detail (size · source / space used)
+    mono: string,       // monogram; on a header row: the chapter number ("02")
+    star: bool,         // header: draw the star glyph
+    icon: image,        // native icon from the tool's .exe (installed only)
+    has-icon: bool,
+    reinstallable: bool, // has a source (catalog/search) → "Neu installieren" possible
+    cli: bool,          // command-line tool → "Terminal" instead of "Starten"
+    glyph: string,      // header: icon kind of the category
+    count: int,         // header: number of tools in the section
+}
+
+struct DriveOption {
+    label: string,
+    path: string,
+}
+
+// A category filter chip on the Discover page ("" = all), with its icon.
+struct CatItem {
+    name: string,
+    icon: string,
+    count: int,
+    active: bool,
+}
+
+// One line of filter chips (Rust wraps the chips into lines that fit).
+struct ChipRow {
+    chips: [CatItem],
+}
+
+// A tool inside an expanded sidebar list.
+struct ListTool {
+    id: int,            // -1 = not in the library any more
+    name: string,
+    title: string,
+    mono: string,
+    icon: image,
+    has-icon: bool,
+    installed: bool,
+}
+
+// A user-defined list in the sidebar (name + members, expandable).
+struct ListItem {
+    name: string,
+    count: int,
+    open: bool,
+    tools: [ListTool],
+}
+
+// One row in the add-to-list popup: a list + whether the tool is a member.
+struct ListToggle {
+    name: string,
+    active: bool,
+}
+
+struct CliToolItem {
+    id: int,
+    name: string,
+    mono: string,
+    path: string,
+    installed: bool,
+    env: [string],
+    commands: [string],
+    icon: image,
+    has-icon: bool,
+}
+
+// One display row: a full-width element (header/feature/updateall/tool) via `a`,
+// or a pair of compact grid cards (`a` + optional `b`) when kind == "pair".
+struct ToolRow {
+    kind: string,
+    a: ToolItem,
+    b: ToolItem,
+    has-b: bool,
+}
+
+// Row in the tray quick-launch mini window (category header or a launchable tool).
+struct MiniItem {
+    kind: string,   // "header" | "tool"
+    id: int,
+    name: string,
+    mono: string,
+    icon: image,
+    has-icon: bool,
+}
+
+// Which renderer draws the window. The software renderer (fallback when a PC's
+// GPU driver fails) can't combine gradients with rounded corners — it paints
+// them as sharp rectangles — so the gradient surfaces switch to plain colours
+// there, and the decoration that needs clipping (light sweep, shadows) is off.
+export global Render {
+    in property <bool> soft: false;
+}
+
+// ── Line/glyph icon, drawn from a 24×24 viewbox (website: lines, 1.6 px, round). ──
+component Icon inherits Rectangle {
+    in property <string> kind;
+    in property <color> tint: Mx.muted;
+    width: 18px;
+    height: 18px;
+    Path {
+        width: 100%; height: 100%;
+        viewbox-x: 0; viewbox-y: 0; viewbox-width: 24; viewbox-height: 24;
+        // Filled glyphs (star) vs. stroked line icons.
+        fill: root.kind == "discover" ? root.tint : transparent;
+        stroke: root.kind == "discover" ? transparent : root.tint;
+        stroke-width: root.width < 14px ? 1.3px : 1.6px;
+        stroke-line-cap: round;
+        commands: root.kind == "discover"
+            ? "M12 3 L14.6 8.3 L20.5 9.2 L16.3 13.3 L17.3 19.1 L12 16.9 L6.7 19.2 L7.7 13.3 L3.5 9.2 L9.4 8.3 Z"
+            : root.kind == "installed"
+            ? "M20 7 L9 18 L4 13"
+            : root.kind == "updates"
+            ? "M21 12 a9 9 0 1 1 -3 -6.7 M21 4 v4 h-4"
+            : root.kind == "search"
+            ? "M10 4 a6 6 0 1 0 0.001 0 M20 20 L15 15"
+            : root.kind == "disk"
+            ? "M4 5 H20 V19 H4 Z M8 5 V10 H16 V5"
+            : root.kind == "chevron"
+            ? "M6 9 L12 15 L18 9"
+            : root.kind == "cli"
+            ? "M3 5 H21 V19 H3 Z M7 10 L10 13 L7 16 M12 16 H16"
+            : root.kind == "list"
+            ? "M4 6 H20 M4 12 H20 M4 18 H20"
+            : root.kind == "grid"
+            ? "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z"
+            : root.kind == "network"
+            ? "M9 12 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0 M12 3 V9 M12 15 V21 M3 12 H9 M15 12 H21"
+            : root.kind == "key"
+            ? "M9 14 a4 4 0 1 0 0.01 0 M12 11 L20 3 M18 5 L21 8 M15 8 L17 10"
+            : root.kind == "chip"
+            ? "M8 8 H16 V16 H8 Z M10 3 V6 M14 3 V6 M10 18 V21 M14 18 V21 M3 10 H6 M3 14 H6 M18 10 H21 M18 14 H21"
+            : root.kind == "system"
+            ? "M12 8.5 a3.5 3.5 0 1 0 0.01 0 M12 3 V5.5 M12 18.5 V21 M4.5 12 H7 M17 12 H19.5 M6.3 6.3 L8 8 M16 16 L17.7 17.7 M17.7 6.3 L16 8 M8 16 L6.3 17.7"
+            : root.kind == "globe"
+            ? "M12 3 a9 9 0 1 0 0.01 0 M3.5 9 H20.5 M3.5 15 H20.5 M12 3 C8 7 8 17 12 21 M12 3 C16 7 16 17 12 21"
+            : root.kind == "files"
+            ? "M9 8 H20 V20 H9 Z M5 4 H16 V8 M5 4 V16 H9"
+            : root.kind == "media"
+            ? "M12 3 a9 9 0 1 0 0.01 0 M10 8.5 L16 12 L10 15.5 Z"
+            : root.kind == "image"
+            ? "M4 5 H20 V19 H4 Z M8.5 10 a1.5 1.5 0 1 0 0.01 0 M4 16 L9 12 L13 15 L16 12 L20 16"
+            : root.kind == "addlist"
+            ? "M4 6 H14 M4 12 H12 M4 18 H12 M18 14 V22 M14 18 H22"
+            : root.kind == "check"
+            ? "M5 12 L10 17 L19 7"
+            : root.kind == "chevron-right"
+            ? "M9 6 L15 12 L9 18"
+            : root.kind == "x"
+            ? "M6 6 L18 18 M18 6 L6 18"
+            : root.kind == "info"
+            ? "M12 3 a9 9 0 1 0 0.01 0 M12 11 V16.5 M12 7.5 V8"
+            : root.kind == "dash-ring"
+            ? "M12 3 A9 9 0 0 1 18.4 5.6 M21 12 A9 9 0 0 1 18.4 18.4 M12 21 A9 9 0 0 1 5.6 18.4 M3 12 A9 9 0 0 1 5.6 5.6"
+            : "";
+    }
+}
+
+// Kennzeichnungs-Label im Datenblatt-Stil: Versalien, gesperrt, leise.
+component MxLabel inherits Text {
+    color: Mx.faint;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 2.2px;
+    vertical-alignment: center;
+}
+
+// Passermarken an den vier Ecken eines Panels (Datenblatt-Detail der Website).
+// Liegt frei über dem Panel und nimmt am Layout nicht teil.
+component Ticks inherits Rectangle {
+    in property <length> tick: 10px;
+    in property <color> tint: Mx.steel;
+    x: 0; y: 0; width: 100%; height: 100%;
+    Rectangle { x: 0; y: 0; width: root.tick; height: 1px; background: root.tint; }
+    Rectangle { x: 0; y: 0; width: 1px; height: root.tick; background: root.tint; }
+    Rectangle { x: root.width - root.tick; y: 0; width: root.tick; height: 1px; background: root.tint; }
+    Rectangle { x: root.width - 1px; y: 0; width: 1px; height: root.tick; background: root.tint; }
+    Rectangle { x: 0; y: root.height - 1px; width: root.tick; height: 1px; background: root.tint; }
+    Rectangle { x: 0; y: root.height - root.tick; width: 1px; height: root.tick; background: root.tint; }
+    Rectangle { x: root.width - root.tick; y: root.height - 1px; width: root.tick; height: 1px; background: root.tint; }
+    Rectangle { x: root.width - 1px; y: root.height - root.tick; width: 1px; height: root.tick; background: root.tint; }
+}
+
+// Teile-Kette: das Motiv der Marke, auch auf der Website (offen → läuft → geprüft).
+// Ersetzt jede Fortschritts- und Füllstandsanzeige.
+component Bits inherits HorizontalLayout {
+    in property <float> value: 0;
+    in property <int> parts: 20;
+    in property <length> bar: 8px;
+    spacing: 3px;
+    for i in root.parts : Rectangle {
+        horizontal-stretch: 1;
+        min-width: 0px;
+        height: root.bar;
+        border-radius: 1.5px;
+        background: root.value * root.parts >= i + 1 ? Mx.bit-done
+            : (root.value * root.parts > i ? Mx.bit-moving : Mx.bit-empty);
+        // Bewusst KEINE Animation: Der Wert ändert sich beim Download sehr oft, jede
+        // Änderung startete sie neu — die Teile hingen dem echten Stand weit hinterher.
+    }
+}
+
+// Lichtstreifen beim Hovern — ein Durchlauf, wie auf den Website-Buttons. Beim
+// Verlassen springt er unsichtbar zurück. Braucht Clipping mit runden Ecken,
+// deshalb nur mit GPU-Renderer (der Aufrufer prüft Render.soft).
+component Sweep inherits Rectangle {
+    in property <bool> on;
+    in property <color> shine: Mx.shine;
+    clip: true;
+    Rectangle {
+        y: 0; height: parent.height;
+        width: parent.width * 0.4;
+        x: root.on ? parent.width * 1.3 : parent.width * -0.6;
+        animate x { duration: root.on ? 650ms : 0ms; easing: ease-in-out; }
+        // Ausblenden über Weiß mit Alpha 0: `transparent` ist Schwarz und dunkelte das Metall ab.
+        background: @linear-gradient(105deg, root.shine.with-alpha(0) 0%, root.shine 50%, root.shine.with-alpha(0) 100%);
+    }
+}
+
+// Chrome (primary) button — brushed metal, pill. One per card.
+component ChromeButton inherits Rectangle {
+    in property <string> label;
+    callback clicked;
+    height: 34px;
+    min-width: 128px;
+    border-radius: self.height / 2;
+    background: Render.soft
+        ? (ta.pressed ? Mx.chrome-flat-pressed : (ta.has-hover ? Mx.chrome-flat-hover : Mx.chrome-flat))
+        : (ta.pressed ? Mx.chrome-btn-pressed : Mx.chrome-btn);
+    animate background { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    // Licht und Schatten (no layout shift).
+    drop-shadow-color: Render.soft ? transparent : (ta.has-hover ? Mx.tint-22 : Mx.shadow);
+    drop-shadow-blur: Render.soft ? 0px : (ta.has-hover ? 18px : 10px);
+    drop-shadow-offset-y: Render.soft ? 0px : (ta.has-hover ? 2px : 4px);
+    animate drop-shadow-blur, drop-shadow-offset-y { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    if !Render.soft : Sweep { on: ta.has-hover; width: 100%; height: 100%; border-radius: root.border-radius; }
+    Text {
+        width: parent.width; height: parent.height;
+        text: root.label; color: Mx.on-chrome; font-size: 12.5px; font-weight: 600; letter-spacing: 0.3px;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Destructive confirmation — the one place the danger colour fills a control.
+component DangerButton inherits Rectangle {
+    in property <string> label;
+    callback clicked;
+    height: 34px;
+    min-width: 96px;
+    border-radius: self.height / 2;
+    background: ta.has-hover ? Mx.danger-line : Mx.danger-soft;
+    border-width: 1px;
+    border-color: ta.has-hover ? Mx.danger : Mx.danger-line;
+    animate background, border-color { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Text {
+        width: parent.width; height: parent.height;
+        text: root.label; color: ta.has-hover ? Mx.text : Mx.danger; font-size: 12.5px; font-weight: 600; letter-spacing: 0.3px;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Ghost (secondary) button — outlined pill. `danger-hover` warns on the way to a delete.
+component GhostButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> danger-hover: false;
+    callback clicked;
+    height: 34px;
+    min-width: 82px;
+    border-radius: self.height / 2;
+    background: ta.pressed ? Mx.tint-03 : (ta.has-hover ? Mx.tint-07 : Mx.wash);
+    border-width: 1px;
+    border-color: ta.has-hover ? (root.danger-hover ? Mx.danger-line : Mx.steel) : Mx.line-strong;
+    animate background, border-color { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Text {
+        width: parent.width; height: parent.height;
+        text: root.label; color: ta.has-hover && root.danger-hover ? Mx.danger : Mx.text;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Monogram tile (outlined, like the tool rows on the website).
+// Shows the tool's real icon when one is available, else the monogram.
+component Tile inherits Rectangle {
+    in property <string> mono;
+    in property <image> icon;
+    in property <bool> has-icon: false;
+    in property <length> size: 48px;
+    in property <length> radius: 10px;
+    in property <length> glyph: 16px;
+    width: root.size; height: root.size; border-radius: root.radius;
+    background: Mx.graphit;
+    border-width: 1px; border-color: Mx.line-strong;
+    if !root.has-icon : Text {
+        width: parent.width; height: parent.height; text: root.mono;
+        color: Mx.silver; font-size: root.glyph; font-weight: 700;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    if root.has-icon : Image {
+        source: root.icon;
+        image-fit: contain;
+        width: root.size * 0.64; height: root.size * 0.64;
+        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+    }
+}
+
+// Small outlined pill.
+component Chip inherits Rectangle {
+    in property <string> label;
+    height: 20px; border-radius: 10px;
+    border-width: 1px; border-color: Mx.line-strong;
+    HorizontalLayout {
+        padding-left: 9px; padding-right: 9px;
+        Text { text: root.label; color: Mx.silver; font-size: 10.5px; font-weight: 500; vertical-alignment: center; }
+    }
+}
+
+// Status-Kennzeichen: die Form trägt die Aussage, nicht die Farbe — wie auf der
+// Website. Installiert = voller Punkt, Update = Ring, läuft = gestrichelt.
+// Nur Fehler nutzen die Warnfarbe.
+component StatusPill inherits Rectangle {
+    in property <string> status;
+    property <bool> bad: root.status == "error" || root.status == "broken";
+    property <bool> filled: root.status == "installed" || root.status == "done";
+    height: 20px; border-radius: 10px;
+    border-width: 1px; border-color: root.bad ? Mx.danger-line : Mx.line-strong;
+    HorizontalLayout {
+        padding-left: 7px; padding-right: 8px; spacing: 5px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 7px; height: 7px;
+                if root.filled : Rectangle { border-radius: 3.5px; background: Mx.bit-done; }
+                if root.status == "update" || root.bad : Rectangle {
+                    border-radius: 3.5px; border-width: 1.5px;
+                    border-color: root.bad ? Mx.danger : Mx.silver;
+                }
+                if root.status == "installing" : Icon { kind: "dash-ring"; tint: Mx.silver; width: 9px; height: 9px; x: -1px; y: -1px; }
+            }
+        }
+        Text {
+            text: root.status == "update" ? "UPDATE"
+                : root.status == "broken" ? "DEFEKT"
+                : root.status == "error" ? "FEHLER"
+                : root.status == "installing" ? "LÄUFT"
+                : "INSTALLIERT";
+            color: root.bad ? Mx.danger : (root.filled ? Mx.text : Mx.muted);
+            font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// One segment of a small segmented control (sort / page-size). Active = chrome.
+component SegItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    callback clicked;
+    height: 26px;
+    border-radius: Mx.radius-s;
+    background: root.active
+        ? (Render.soft ? Mx.chrome-flat : Mx.chrome-btn)
+        : (ta.has-hover ? Mx.tint-07 : transparent);
+    HorizontalLayout {
+        padding-left: 11px; padding-right: 11px;
+        Text {
+            text: root.label;
+            color: root.active ? Mx.on-chrome : Mx.muted;
+            font-size: 12px; font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Sidebar navigation entry (icon | label | badge), with a chrome bar when active.
+component NavItem inherits Rectangle {
+    in property <string> label;
+    in property <string> view-id;
+    in property <string> current;
+    in property <string> icon;
+    in property <int> badge: 0;
+    callback clicked;
+    height: 36px;
+    border-radius: Mx.radius-s;
+    property <bool> active: root.current == root.view-id;
+    background: root.active ? Mx.tint-07 : (ta.has-hover ? Mx.tint-03 : transparent);
+    animate background { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Rectangle {
+        x: 0; width: 2px; height: root.active ? 20px : 0px; y: (parent.height - self.height) / 2;
+        background: Mx.chrome-text;
+        animate height { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
+    HorizontalLayout {
+        padding-left: 12px; padding-right: 10px; spacing: 10px;
+        VerticalLayout {
+            alignment: center; width: 18px;
+            Icon { kind: root.icon; tint: root.active ? Mx.silver : Mx.faint; }
+        }
+        Text {
+            text: root.label;
+            color: root.active ? Mx.text : Mx.muted;
+            font-size: 13.5px; font-weight: root.active ? 600 : 500;
+            vertical-alignment: center; overflow: elide;
+        }
+        Rectangle { horizontal-stretch: 1; }
+        if root.badge > 0 : VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 22px; height: 18px; border-radius: 9px;
+                background: Render.soft ? Mx.chrome-flat : Mx.chrome-btn;
+                Text { width: parent.width; height: parent.height; text: root.badge; color: Mx.on-chrome; font-size: 10.5px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// One row of a spec sheet ("Kennblatt"): label left, value right, hairline below.
+component SpecRow inherits VerticalLayout {
+    in property <string> label;
+    in property <string> value;
+    in property <bool> mono: false;
+    vertical-stretch: 0;
+    alignment: start;
+    spacing: 9px;
+    HorizontalLayout {
+        spacing: 12px;
+        MxLabel { text: root.label; width: 96px; font-size: 10px; letter-spacing: 1.6px; vertical-alignment: top; }
+        Text {
+            text: root.value; color: Mx.text; font-size: root.mono ? 11.5px : 12.5px;
+            font-family: root.mono ? "Consolas" : "Saira";
+            wrap: word-wrap; horizontal-stretch: 1;
+        }
+    }
+    Rectangle { height: 1px; background: Mx.line; }
+}
+
+// The quiet info line of a card: status detail, else size · source / space used.
+component InfoLine inherits Text {
+    in property <ToolItem> item;
+    text: root.item.detail != "" ? root.item.detail : root.item.meta;
+    color: root.item.detail == "" ? Mx.faint
+        : (root.item.status == "error" || root.item.status == "broken") ? Mx.danger
+        : Mx.silver;
+    font-size: 11px;
+    overflow: elide;
+    vertical-alignment: center;
+    min-width: 0px;
+}
+
+// The status-dependent action cluster, shared by tool + feature cards.
+component ActionCluster inherits VerticalLayout {
+    in property <ToolItem> item;
+    callback terminal(int);
+    callback install(int);
+    callback launch(int);
+    callback remove(int);
+    callback update(int);
+    callback cancel(int);
+    callback open(int);
+    alignment: center; spacing: 7px;
+
+    if root.item.status == "available" : ChromeButton {
+        label: "Installieren"; clicked => { root.install(root.item.id); }
+    }
+    if root.item.status == "error" : ChromeButton {
+        label: "Erneut versuchen"; clicked => { root.install(root.item.id); }
+    }
+    if root.item.status == "broken" : HorizontalLayout {
+        spacing: 6px;
+        if root.item.reinstallable : ChromeButton { label: "Neu installieren"; min-width: 112px; clicked => { root.install(root.item.id); } }
+        GhostButton { label: "Entfernen"; min-width: 80px; danger-hover: true; clicked => { root.remove(root.item.id); } }
+    }
+    // Fortschritt als Teile-Kette + Abbrechen (der Status-Text steht in der
+    // Kartenzeile darüber). Die Leiste muss auch ins 2-Spalten-Raster passen.
+    if root.item.status == "installing" : HorizontalLayout {
+        spacing: 10px;
+        VerticalLayout {
+            alignment: center;
+            min-width: 110px; preferred-width: 190px;
+            Bits { value: root.item.progress; parts: 20; }
+        }
+        GhostButton { label: "Abbrechen"; min-width: 84px; clicked => { root.cancel(root.item.id); } }
+    }
+    // Mindestbreiten bewusst knapp: In GridCards (2-Spalten-Raster, ~250px
+    // Content-Breite) muss die Leiste komplett hineinpassen — sonst treibt sie
+    // die Karten-Mindestbreite und bläht das Raster (s. GridCard-Kommentar).
+    if root.item.status == "installed" : HorizontalLayout {
+        spacing: 6px;
+        // Command-line tools would only flash a console window — open a terminal instead.
+        if !root.item.cli : ChromeButton { label: "Starten"; min-width: 72px; clicked => { root.launch(root.item.id); } }
+        if root.item.cli : ChromeButton { label: "Terminal"; min-width: 78px; clicked => { root.terminal(root.item.id); } }
+        GhostButton { label: "Ordner"; min-width: 64px; clicked => { root.open(root.item.id); } }
+        GhostButton { label: "Entfernen"; min-width: 76px; danger-hover: true; clicked => { root.remove(root.item.id); } }
+    }
+    if root.item.status == "done" : StatusPill { status: "done"; }
+    if root.item.status == "update" : HorizontalLayout {
+        spacing: 6px;
+        if !root.item.cli : GhostButton { label: "Starten"; min-width: 68px; clicked => { root.launch(root.item.id); } }
+        if root.item.cli : GhostButton { label: "Terminal"; min-width: 76px; clicked => { root.terminal(root.item.id); } }
+        GhostButton { label: "Ordner"; min-width: 64px; clicked => { root.open(root.item.id); } }
+        ChromeButton { label: "Aktualisieren"; min-width: 104px; clicked => { root.update(root.item.id); } }
+    }
+}
+
+// Add-to-list button in a card's corner: click = popup, drag = drop onto a sidebar
+// list. Shared by all card types.
+component ListHandle inherits Rectangle {
+    in property <ToolItem> item;
+    in property <length> size: 26px;
+    callback addlist(int);
+    callback dragmove(int, string, string, bool, image, length, length);
+    callback dragend();
+    // Mirrored by binding: `root.item.*` read inside pointer handlers yields the
+    // default struct (Slint), which once made drops land empty.
+    property <int> myid: root.item.id;
+    property <string> mytitle: root.item.title;
+    property <string> mymono: root.item.mono;
+    property <bool> myhas: root.item.has-icon;
+    property <image> myicon: root.item.icon;
+    property <bool> moved-far: false;
+    property <length> px: 0;
+    property <length> py: 0;
+    width: root.size; height: root.size; border-radius: Mx.radius-s;
+    background: al-ta.pressed ? Mx.tint-12 : (al-ta.has-hover ? Mx.tint-07 : transparent);
+    Icon {
+        kind: "addlist"; tint: al-ta.has-hover ? Mx.text : Mx.faint;
+        width: root.size * 0.58; height: root.size * 0.58;
+        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+    }
+    al-ta := TouchArea {
+        mouse-cursor: self.pressed && root.moved-far ? grabbing : grab;
+        pointer-event(ev) => {
+            if (ev.kind == PointerEventKind.down) { root.moved-far = false; root.px = self.mouse-x; root.py = self.mouse-y; }
+            if (ev.button == PointerEventButton.left && ev.kind == PointerEventKind.up) { root.dragend(); }
+        }
+        moved => {
+            if (self.pressed && (abs(self.mouse-x - root.px) + abs(self.mouse-y - root.py) > 6px)) { root.moved-far = true; }
+            if (root.moved-far) {
+                root.dragmove(root.myid, root.mytitle, root.mymono, root.myhas, root.myicon,
+                    self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+        clicked => { if (!root.moved-far) { root.addlist(root.myid); } }
+    }
+}
+
+// Karten-Grundform der Website (`.tool`): senkrechter Graphit-Verlauf, feine Linie,
+// beim Hovern kräftigere Linie, Schatten und eine Chrome-Kante, die von links einläuft.
+component CardFrame inherits Rectangle {
+    in property <bool> hover;
+    in property <length> radius: Mx.radius-l;
+    background: Render.soft ? Mx.card-flat : Mx.card;
+    border-radius: root.radius;
+    border-width: 1px;
+    border-color: root.hover ? Mx.line-strong : Mx.line;
+    animate border-color { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    drop-shadow-color: Render.soft ? transparent : Mx.shadow;
+    drop-shadow-blur: Render.soft ? 0px : (root.hover ? 22px : 0px);
+    drop-shadow-offset-y: Render.soft ? 0px : (root.hover ? 8px : 0px);
+    animate drop-shadow-blur, drop-shadow-offset-y { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Rectangle {
+        y: 0; x: root.radius; height: 1px;
+        width: root.hover ? parent.width - 2 * root.radius : 0px;
+        background: @linear-gradient(90deg, Mx.silver 0%, Mx.steel 58%, Mx.text 100%);
+        animate width { duration: 450ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
+}
+
+// Standard tool row.
+component ToolCard inherits CardFrame {
+    in property <ToolItem> item;
+    callback install(int);
+    callback launch(int);
+    callback remove(int);
+    callback update(int);
+    callback cancel(int);
+    callback open(int);
+    callback details(int);
+    callback terminal(int);
+    callback addlist(int);
+    callback dragmove(int, string, string, bool, image, length, length);
+    callback dragend();
+    hover: ta.has-hover;
+    ta := TouchArea { clicked => { root.details(root.item.id); } }
+    HorizontalLayout {
+        padding: 14px; spacing: 14px;
+        VerticalLayout { alignment: center; Tile { mono: root.item.mono; icon: root.item.icon; has-icon: root.item.has-icon; } }
+        VerticalLayout {
+            alignment: center; horizontal-stretch: 1; spacing: 4px;
+            HorizontalLayout {
+                spacing: 8px; alignment: start;
+                Text { text: root.item.title; color: Mx.text; font-size: 15px; font-weight: 600; vertical-alignment: center; }
+                Text { text: "v" + root.item.version; color: Mx.faint; font-size: 12px; vertical-alignment: center; visible: root.item.version != ""; }
+                Chip { label: root.item.category; }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            Text { text: root.item.summary; color: Mx.muted; font-size: 12.5px; overflow: elide; }
+            // Status + detail, else the quiet info line (size · source / space used).
+            HorizontalLayout {
+                spacing: 8px; alignment: start;
+                if root.item.status != "available" : StatusPill { status: root.item.status; }
+                InfoLine { item: root.item; horizontal-stretch: 1; }
+            }
+        }
+        Rectangle {
+            width: 322px;
+            HorizontalLayout {
+                alignment: end;
+                ActionCluster {
+                    item: root.item;
+                    terminal(id) => { root.terminal(id); }
+                    install(id) => { root.install(id); }
+                    launch(id) => { root.launch(id); }
+                    remove(id) => { root.remove(id); }
+                    update(id) => { root.update(id); }
+                    cancel(id) => { root.cancel(id); }
+                    open(id) => { root.open(id); }
+                }
+            }
+        }
+    }
+    ListHandle {
+        item: root.item; size: 26px;
+        x: parent.width - self.width - 12px; y: 6px;
+        addlist(id) => { root.addlist(id); }
+        dragmove(a, b, c, d, e, f, g) => { root.dragmove(a, b, c, d, e, f, g); }
+        dragend() => { root.dragend(); }
+    }
+}
+
+// Larger "featured" card for the Discover front row.
+component FeatureCard inherits CardFrame {
+    in property <ToolItem> item;
+    callback install(int);
+    callback launch(int);
+    callback remove(int);
+    callback update(int);
+    callback cancel(int);
+    callback open(int);
+    callback details(int);
+    callback terminal(int);
+    callback addlist(int);
+    callback dragmove(int, string, string, bool, image, length, length);
+    callback dragend();
+    hover: ta.has-hover;
+    ta := TouchArea { clicked => { root.details(root.item.id); } }
+    HorizontalLayout {
+        padding: 20px; spacing: 16px;
+        VerticalLayout { alignment: center; Tile { mono: root.item.mono; icon: root.item.icon; has-icon: root.item.has-icon; size: 60px; radius: 12px; glyph: 21px; } }
+        VerticalLayout {
+            alignment: center; horizontal-stretch: 1; spacing: 7px;
+            HorizontalLayout {
+                spacing: 9px; alignment: start;
+                Text { text: root.item.title; color: Render.soft ? Mx.text : Mx.chrome-text; font-size: 19px; font-weight: 700; vertical-alignment: center; }
+                Text { text: "v" + root.item.version; color: Mx.faint; font-size: 12px; vertical-alignment: center; visible: root.item.version != ""; }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            Text { text: root.item.summary; color: Mx.muted; font-size: 13px; wrap: word-wrap; overflow: elide; min-height: 34px; max-height: 34px; }
+            HorizontalLayout {
+                spacing: 7px; alignment: start;
+                Chip { label: "Kuratiert"; }
+                Chip { label: root.item.category; }
+                if root.item.status != "available" : StatusPill { status: root.item.status; }
+                InfoLine { item: root.item; horizontal-stretch: 1; }
+            }
+        }
+        Rectangle {
+            width: 240px;
+            HorizontalLayout {
+                alignment: end;
+                ActionCluster {
+                    item: root.item;
+                    terminal(id) => { root.terminal(id); }
+                    install(id) => { root.install(id); }
+                    launch(id) => { root.launch(id); }
+                    remove(id) => { root.remove(id); }
+                    update(id) => { root.update(id); }
+                    cancel(id) => { root.cancel(id); }
+                    open(id) => { root.open(id); }
+                }
+            }
+        }
+    }
+    ListHandle {
+        item: root.item; size: 28px;
+        x: parent.width - self.width - 14px; y: 14px;
+        addlist(id) => { root.addlist(id); }
+        dragmove(a, b, c, d, e, f, g) => { root.dragmove(a, b, c, d, e, f, g); }
+        dragend() => { root.dragend(); }
+    }
+}
+
+// Compact vertical card for the 2-column "Kacheln" view.
+component GridCard inherits CardFrame {
+    in property <ToolItem> item;
+    callback install(int);
+    callback launch(int);
+    callback remove(int);
+    callback update(int);
+    callback cancel(int);
+    callback open(int);
+    callback details(int);
+    callback terminal(int);
+    callback addlist(int);
+    callback dragmove(int, string, string, bool, image, length, length);
+    callback dragend();
+    // WICHTIG: Keine inhaltsgetriebenen Breiten nach außen melden! Die elidierten
+    // einzeiligen Texte (Detail-/Summary-Zeile) melden in dieser Slint-Version
+    // ihre volle Naturbreite als min-width. Sobald der Update-Check Detail-Zeilen
+    // liefert, wuchs dadurch die Karten-Mindestbreite -> Pair-Zeile -> ScrollView
+    // blähte sich über den Viewport auf und die Karten rutschten ungleichmäßig
+    // aus dem Bild. Die Breite kommt ausschließlich vom HorizontalLayout-Stretch.
+    preferred-width: 0px;
+    min-width: 0px;
+    hover: ta.has-hover;
+    ta := TouchArea { clicked => { root.details(root.item.id); } }
+    VerticalLayout {
+        padding: 14px; spacing: 8px;
+        HorizontalLayout {
+            spacing: 11px;
+            min-height: 44px; max-height: 44px;
+            Tile { mono: root.item.mono; icon: root.item.icon; has-icon: root.item.has-icon; size: 40px; radius: 8px; glyph: 14px; }
+            VerticalLayout {
+                alignment: center; spacing: 4px;
+                HorizontalLayout {
+                    spacing: 7px; alignment: start;
+                    Text { text: root.item.title; color: Mx.text; font-size: 14px; font-weight: 600; vertical-alignment: center; overflow: elide; min-width: 0px; }
+                    Text { text: "v" + root.item.version; color: Mx.faint; font-size: 11px; vertical-alignment: center; visible: root.item.version != ""; }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                HorizontalLayout { Chip { label: root.item.category; } Rectangle { horizontal-stretch: 1; } }
+            }
+        }
+        // min-width: 0 bei ALLEN elidierten Texten — s. Kommentar am Komponenten-Kopf.
+        Text { text: root.item.summary; color: Mx.muted; font-size: 12px; min-height: 32px; max-height: 32px; wrap: word-wrap; overflow: elide; min-width: 0px; }
+        // Status-Zeile ist IMMER im Layout (auch leer), damit jede GridCard exakt
+        // dieselbe Höhe hat — sonst stehen Karten mit Update-/Install-Status tiefer
+        // und das Raster verrutscht. So ist sie auch nie ein leerer Streifen.
+        HorizontalLayout {
+            spacing: 7px; alignment: start;
+            min-height: 20px; max-height: 20px;
+            if root.item.status != "available" : StatusPill { status: root.item.status; }
+            InfoLine { item: root.item; horizontal-stretch: 1; }
+        }
+        Rectangle { vertical-stretch: 1; }
+        HorizontalLayout {
+            alignment: start;
+            min-height: 34px; max-height: 34px;
+            ActionCluster {
+                item: root.item;
+                terminal(id) => { root.terminal(id); }
+                install(id) => { root.install(id); }
+                launch(id) => { root.launch(id); }
+                remove(id) => { root.remove(id); }
+                update(id) => { root.update(id); }
+                cancel(id) => { root.cancel(id); }
+                open(id) => { root.open(id); }
+            }
+        }
+    }
+    ListHandle {
+        item: root.item; size: 26px;
+        x: parent.width - self.width - 11px; y: 11px;
+        addlist(id) => { root.addlist(id); }
+        dragmove(a, b, c, d, e, f, g) => { root.dragmove(a, b, c, d, e, f, g); }
+        dragend() => { root.dragend(); }
+    }
+}
+
+// One CLI tool: header + env chips + copyable command lines (terminal look).
+component CliCard inherits Rectangle {
+    in property <CliToolItem> item;
+    callback terminal(int);
+    callback install(int);
+    callback copy(string);
+    border-radius: Mx.radius-l;
+    background: Render.soft ? Mx.card-flat : Mx.card;
+    border-width: 1px;
+    border-color: Mx.line;
+    VerticalLayout {
+        padding: 16px; spacing: 12px;
+        // Header
+        HorizontalLayout {
+            spacing: 12px;
+            Tile { mono: root.item.mono; icon: root.item.icon; has-icon: root.item.has-icon; size: 38px; radius: 8px; glyph: 13px; }
+            VerticalLayout {
+                alignment: center; spacing: 2px;
+                Text { text: root.item.name; color: Mx.text; font-size: 14px; font-weight: 600; }
+                Text { text: root.item.path; color: Mx.faint; font-size: 11px; font-family: "Consolas"; }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            VerticalLayout {
+                alignment: center;
+                if root.item.installed : ChromeButton {
+                    label: "Terminal öffnen"; min-width: 138px;
+                    clicked => { root.terminal(root.item.id); }
+                }
+                if !root.item.installed : ChromeButton {
+                    label: "Installieren"; min-width: 120px;
+                    clicked => { root.install(root.item.id); }
+                }
+            }
+        }
+        // Env chips
+        if root.item.env.length > 0 : HorizontalLayout {
+            spacing: 7px;
+            for e in root.item.env : Chip { label: e; }
+            Rectangle { horizontal-stretch: 1; }
+        }
+        // Command lines (click to copy)
+        for c in root.item.commands : Rectangle {
+            height: 34px; border-radius: Mx.radius-s; background: Mx.foot;
+            border-width: 1px; border-color: cmd-ta.has-hover ? Mx.steel : Mx.line;
+            cmd-ta := TouchArea { mouse-cursor: pointer; clicked => { root.copy(c); } }
+            HorizontalLayout {
+                padding-left: 12px; padding-right: 12px; spacing: 10px;
+                Text { text: ">"; color: Mx.faint; font-family: "Consolas"; font-size: 12.5px; vertical-alignment: center; }
+                Text { text: c; color: Mx.silver; font-family: "Consolas"; font-size: 12.5px; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+                Text { text: cmd-ta.has-hover ? "kopieren" : ""; color: Mx.faint; font-size: 11px; vertical-alignment: center; }
+            }
+        }
+        Text {
+            text: root.item.installed
+                ? "Klick auf einen Befehl kopiert ihn in die Zwischenablage."
+                : "Noch nicht installiert – oben installieren, dann öffnet sich ein Terminal mit dem Tool im PATH.";
+            color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
+        }
+    }
+}
+
+// Kapitel-Kopf wie auf der Website: Linie, Nummer, Titel — rechts die Anzahl.
+component HeaderRow inherits Rectangle {
+    in property <string> number;
+    in property <string> title;
+    in property <bool> star;
+    in property <string> glyph;
+    in property <int> count: 0;
+    Rectangle { x: 0; y: 8px; width: parent.width; height: 1px; background: Mx.line; }
+    HorizontalLayout {
+        x: 2px; y: 9px; width: parent.width - 4px; height: parent.height - 9px;
+        spacing: 10px;
+        if root.number != "" : Text { text: root.number; color: Mx.silver; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; vertical-alignment: center; }
+        if root.glyph != "" : VerticalLayout { alignment: center; Icon { kind: root.glyph; tint: Mx.steel; width: 15px; height: 15px; } }
+        if root.star : VerticalLayout { alignment: center; Icon { kind: "discover"; tint: Mx.steel; width: 13px; height: 13px; } }
+        Text { text: root.title; color: Mx.text; font-size: 15px; font-weight: 700; vertical-alignment: center; }
+        Rectangle { horizontal-stretch: 1; }
+        if root.count > 0 : MxLabel { text: root.count == 1 ? "1 TOOL" : root.count + " TOOLS"; font-size: 9.5px; letter-spacing: 1.8px; }
+    }
+}
+
+// Category filter chip (Discover). Outlined; active = chrome like the website's segments.
+component FilterChip inherits Rectangle {
+    in property <string> label;
+    in property <string> glyph;
+    in property <int> count: 0;
+    in property <bool> active: false;
+    callback clicked;
+    height: 30px;
+    border-radius: 15px;
+    background: root.active
+        ? (Render.soft ? Mx.chrome-flat : Mx.chrome-btn)
+        : (ta.has-hover ? Mx.tint-07 : Mx.wash);
+    border-width: root.active ? 0px : 1px;
+    border-color: ta.has-hover ? Mx.steel : Mx.line-strong;
+    animate border-color { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    HorizontalLayout {
+        padding-left: 11px; padding-right: 12px; spacing: 7px;
+        if root.glyph != "" : VerticalLayout { alignment: center; Icon { kind: root.glyph; tint: root.active ? Mx.on-chrome : Mx.steel; width: 13px; height: 13px; } }
+        VerticalLayout { alignment: center; Text { text: root.label; color: root.active ? Mx.on-chrome : Mx.silver; font-size: 12px; font-weight: root.active ? 600 : 500; } }
+        if root.count > 0 : VerticalLayout { alignment: center; Text { text: root.count; color: root.active ? Mx.on-chrome : Mx.faint; font-size: 11px; font-weight: 600; } }
+    }
+    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Technisches Raster im Hintergrund (Website: 96er-Hauptlinien, 24er-Feinraster),
+// das nach unten ausläuft, oben ein Lichtfleck. Liegt hinter dem Inhalt, Karten
+// sind deckend. Statisch, kostet also nichts, solange nichts neu gezeichnet wird.
+component TechGrid inherits Rectangle {
+    clip: true;
+    for i in ceil(root.width / 24px) : Rectangle {
+        x: i * 24px; y: 0; width: 1px; height: root.height;
+        background: mod(i, 4) == 0 ? Mx.grid-major : Mx.grid-minor;
+    }
+    for j in ceil(root.height / 24px) : Rectangle {
+        x: 0; y: j * 24px; width: root.width; height: 1px;
+        background: mod(j, 4) == 0 ? Mx.grid-major : Mx.grid-minor;
+    }
+    Rectangle {
+        x: 0; y: 0; width: root.width; height: root.height;
+        background: @linear-gradient(180deg, Mx.bg.with-alpha(0) 0%, Mx.bg.with-alpha(0.55) 45%, Mx.bg 85%);
+    }
+    if !Render.soft : Rectangle {
+        width: 900px; height: 420px; x: (parent.width - self.width) / 2; y: -210px;
+        background: @radial-gradient(circle, Mx.tint-07 0%, Mx.tint-07.with-alpha(0) 65%);
+    }
+}
+
+export component MainWindow inherits Window {
+    title: "Maxtrix Portable Organizer";
+    default-font-family: "Saira";
+    preferred-width: 1040px;
+    preferred-height: 700px;
+    min-width: 860px;
+    min-height: 520px;
+    background: Mx.bg;
+
+    in-out property <[ToolRow]> rows;
+    in property <int> grid-cols: 1;
+    callback set-cols(int);
+    // Discover: category filter chips (wrapped into lines by Rust).
+    in property <[ChipRow]> chip-rows;
+    callback set-discover-cat(string);
+    callback content-resized(length);
+    property <length> content-w: contentcol.width;
+    changed content-w => { root.content-resized(self.content-w); }
+    in property <string> build-tag;
+    // True while any install/update runs (the drive glow then circles).
+    in property <bool> busy: false;
+    // Confirmation for destructive actions (filled by Rust, accepted via confirm-accept).
+    in-out property <bool> confirm-open: false;
+    in property <string> confirm-title;
+    in property <string> confirm-text;
+    in property <string> confirm-button: "Entfernen";
+    callback confirm-accept();
+    // User lists
+    in property <[ListItem]> user-lists;
+    in property <string> current-list: "";
+    callback create-list(string);
+    callback delete-list(string);
+    callback select-list(string);
+    callback open-list-menu(int);      // open add-to-list popup for a tool id
+    callback toggle-list(string, string);  // (tool, list) toggle membership
+    callback drop-on-list-id(int, string); // (tool id, list) add via drag&drop
+    callback drop-new-list(int);           // dropped on "new list" → name it, tool goes in
+    callback toggle-list-open(string);     // expand/collapse a list in the sidebar
+    callback list-tool-clicked(int);       // member row: start it (or show details)
+    callback remove-from-list(string, string); // (tool, list)
+    in property <string> flash-list;       // briefly highlights the list a tool just went into
+    in-out property <bool> new-list-open: false;
+    in-out property <string> new-list-name: "";
+    // The tool that goes straight into the new list (-1 = none), e.g. after a drop.
+    in-out property <int> new-list-tool-id: -1;
+    in-out property <string> new-list-tool-title: "";
+    in-out property <bool> list-menu-open: false;
+    in property <string> list-menu-tool: "";   // tool id-name (for toggle-list)
+    in property <string> list-menu-title: "";  // display name
+    in property <int> list-menu-id: -1;
+    in property <[ListToggle]> list-menu-toggles;
+    // Drag & drop state (tool → sidebar list)
+    in-out property <bool> dragging: false;
+    in-out property <string> drag-tool: "";
+    in-out property <int> drag-id: -1;
+    in-out property <string> drag-mono;
+    in-out property <bool> drag-has-icon: false;
+    in-out property <image> drag-icon;
+    in-out property <length> drag-x;
+    in-out property <length> drag-y;
+    in-out property <string> drag-hover-list: "";
+    in property <string> current-view: "discover";
+    in property <int> update-count: 0;
+    in property <string> drive-info: "";
+    in property <string> drive-cap: "";
+    in property <float> drive-fraction: 0;
+    in property <string> view-title: "Entdecken";
+    in property <string> view-subtitle: "";
+    in property <bool> verified-only: true;
+    callback toggle-verified();
+    in property <string> search-sort: "relevanz";
+    in property <int> search-page-size: 20;
+    in property <bool> search-has-more: false;
+    in property <bool> search-loading-more: false;
+    callback set-sort(string);
+    callback set-page-size(int);
+    callback load-more();
+
+    callback install(int);
+    callback launch(int);
+    callback remove(int);
+    callback update(int);
+    callback cancel(int);
+    callback update-all();
+    callback open(int);
+    callback select-view(string);
+    callback search-changed(string);
+
+    // Short confirmation after an action ("7-Zip installiert", "Firefox → Pentest").
+    in property <string> toast-text;
+    in property <string> toast-kind: "ok";   // "ok" | "error" | "info"
+    in property <string> toast-action;       // e.g. "Rückgängig" ("" = none)
+    in-out property <bool> toast-visible: false;
+    callback toast-action-clicked();
+
+    // First close: keep running in the tray, or quit?
+    in-out property <bool> close-ask-open: false;
+    in-out property <bool> about-open: false;
+    callback close-to-tray();
+    callback close-quit();
+
+    // CLI mode.
+    in property <[CliToolItem]> cli-tools;
+    callback open-console();
+    callback open-terminal(int);
+    callback copy-cmd(string);
+
+    // Detail drawer state.
+    in-out property <bool> drawer-open: false;
+    in-out property <bool> drawer-loading: false;
+    in-out property <int> drawer-id: -1;
+    in-out property <string> drawer-name;
+    in-out property <string> drawer-version;
+    in-out property <string> drawer-category;
+    in-out property <string> drawer-summary;
+    in-out property <string> drawer-mono;
+    in-out property <image> drawer-icon;
+    in-out property <bool> drawer-has-icon: false;
+    in-out property <string> drawer-source;
+    in-out property <string> drawer-hash;
+    in-out property <string> drawer-target;
+    in-out property <string> drawer-size;
+    in-out property <string> drawer-action;
+    in-out property <[string]> drawer-deps;
+    callback show-details(int);
+    callback drawer-primary();
+    callback drawer-close();
+
+    changed new-list-open => { if (!self.new-list-open) { key-handler.focus(); } }
+    changed list-menu-open => { if (!self.list-menu-open) { key-handler.focus(); } }
+    changed drawer-open => { if (!self.drawer-open) { key-handler.focus(); } }
+
+    // Stick-root picker state.
+    in-out property <bool> picker-open: false;
+    in property <[DriveOption]> drives;
+    in property <string> app-folder;
+    callback open-picker();
+    callback pick-drive(string);
+    callback pick-folder();
+    callback close-picker();
+
+    // Keyboard: Esc closes the topmost overlay (or clears the search), Ctrl+F jumps
+    // into the search. Keys typed in a text field bubble up here unless it uses them.
+    key-handler := FocusScope {
+    init => { self.focus(); }
+    key-pressed(event) => {
+        if (event.text == Key.Escape) {
+            if (root.about-open) { root.about-open = false; }
+            else if (root.close-ask-open) { root.close-ask-open = false; }
+            else if (root.confirm-open) { root.confirm-open = false; }
+            else if (root.new-list-open) { root.new-list-open = false; }
+            else if (root.list-menu-open) { root.list-menu-open = false; }
+            else if (root.picker-open) { root.close-picker(); }
+            else if (root.drawer-open) { root.drawer-close(); }
+            else if (root.dragging) { root.dragging = false; root.drag-hover-list = ""; }
+            else if (search-ti.text != "") { search-ti.text = ""; root.search-changed(""); }
+            else { return reject; }
+            key-handler.focus();
+            return accept;
+        }
+        if (event.modifiers.control && (event.text == "f" || event.text == "F")) {
+            search-ti.focus();
+            search-ti.select-all();
+            return accept;
+        }
+        return reject;
+    }
+    Rectangle {
+      background: Mx.bg;
+      TechGrid { x: 224px; y: 0; width: parent.width - 224px; height: parent.height; }
+      mainhl := HorizontalLayout {
+        // ── Sidebar ──
+        Rectangle {
+            width: 224px;
+            background: Mx.panel;
+            Rectangle { x: parent.width - 1px; width: 1px; height: parent.height; background: Mx.line; }
+            VerticalLayout {
+                padding: 12px;
+                spacing: 3px;
+                // Brand
+                HorizontalLayout {
+                    padding-left: 6px; padding-bottom: 12px; padding-top: 4px; spacing: 10px;
+                    Image { source: @image-url("assets/maxtrix-icon-chrome-1024.png"); width: 34px; height: 34px; }
+                    VerticalLayout {
+                        alignment: center; spacing: 3px;
+                        Text { text: "MAXTRIX"; color: Render.soft ? Mx.text : Mx.chrome-text; font-family: "Audiowide"; font-size: 17px; letter-spacing: 1.3px; }
+                        Text { text: "PORTABLE ORGANIZER"; color: Mx.faint; font-size: 7.5px; font-weight: 500; letter-spacing: 2.6px; }
+                    }
+                }
+
+                HorizontalLayout { padding-left: 6px; padding-bottom: 4px; MxLabel { text: "BIBLIOTHEK"; } }
+                NavItem { label: "Entdecken"; icon: "discover"; view-id: "discover"; current: root.current-view; clicked => { root.select-view("discover"); } }
+                NavItem { label: "Installiert"; icon: "installed"; view-id: "installed"; current: root.current-view; clicked => { root.select-view("installed"); } }
+                NavItem { label: "Updates"; icon: "updates"; view-id: "updates"; current: root.current-view; badge: root.update-count; clicked => { root.select-view("updates"); } }
+                NavItem { label: "Alle durchsuchen"; icon: "search"; view-id: "search"; current: root.current-view; clicked => { root.select-view("search"); } }
+                NavItem { label: "CLI-Werkzeuge"; icon: "cli"; view-id: "cli"; current: root.current-view; clicked => { root.select-view("cli"); } }
+
+                Rectangle { height: 8px; }
+                HorizontalLayout {
+                    padding-left: 6px; padding-right: 4px; spacing: 4px;
+                    VerticalLayout {
+                        alignment: center;
+                        MxLabel {
+                            text: root.dragging ? "AUF LISTE ZIEHEN" : "MEINE LISTEN";
+                            color: root.dragging ? Mx.text : Mx.faint;
+                        }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Rectangle {
+                        width: 22px; height: 20px; border-radius: 6px;
+                        background: addl-ta.has-hover ? Mx.tint-07 : transparent;
+                        Text { text: "+"; color: addl-ta.has-hover ? Mx.text : Mx.muted; font-size: 16px; horizontal-alignment: center; vertical-alignment: center; }
+                        addl-ta := TouchArea { clicked => { root.new-list-name = ""; root.new-list-tool-id = -1; root.new-list-tool-title = ""; root.new-list-open = true; } }
+                    }
+                }
+                // The lists scroll on their own (many open lists must not push the drive
+                // card out of the window).
+                lsv := ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        width: lsv.visible-width;
+                        alignment: start;
+                        spacing: 2px;
+                        for l in root.user-lists : VerticalLayout {
+                            spacing: 1px;
+                            Rectangle {
+                                height: 34px; border-radius: Mx.radius-s;
+                                property <bool> is-drop: root.dragging && root.drag-hover-list == l.name;
+                                property <bool> selected: root.current-view == "list" && root.current-list == l.name;
+                                property <bool> over-me: root.dragging
+                                    && root.drag-y >= self.absolute-position.y
+                                    && root.drag-y <= self.absolute-position.y + self.height
+                                    && root.drag-x >= self.absolute-position.x
+                                    && root.drag-x <= self.absolute-position.x + self.width;
+                                changed over-me => {
+                                    if (over-me) { root.drag-hover-list = l.name; }
+                                    else if (root.drag-hover-list == l.name) { root.drag-hover-list = ""; }
+                                }
+                                background: is-drop ? Mx.tint-22
+                                    : (root.flash-list == l.name ? Mx.tint-22
+                                    : (selected ? Mx.tint-07 : (lrow-ta.has-hover ? Mx.tint-03 : transparent)));
+                                animate background { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+                                border-width: 1px;
+                                // While dragging, every list shows it is a drop target.
+                                border-color: is-drop ? Mx.silver : (root.dragging ? Mx.line-strong : (root.flash-list == l.name ? Mx.silver : transparent));
+                                animate border-color { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+                                lrow-ta := TouchArea { clicked => { root.select-list(l.name); } }
+                                HorizontalLayout {
+                                    padding-left: 3px; padding-right: 7px; spacing: 5px;
+                                    // Expand / collapse (shows the list's tools right here).
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            width: 22px; height: 22px; border-radius: 6px;
+                                            background: exp-ta.has-hover ? Mx.tint-07 : transparent;
+                                            Icon {
+                                                kind: l.open ? "chevron" : "chevron-right";
+                                                tint: exp-ta.has-hover ? Mx.text : (selected ? Mx.silver : Mx.faint);
+                                                width: 12px; height: 12px;
+                                                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                                            }
+                                            exp-ta := TouchArea { clicked => { root.toggle-list-open(l.name); } }
+                                        }
+                                    }
+                                    VerticalLayout { alignment: center; Text { text: l.name; color: selected ? Mx.text : Mx.silver; font-size: 12.5px; font-weight: selected ? 600 : 400; overflow: elide; } }
+                                    Rectangle { horizontal-stretch: 1; }
+                                    // Count and delete share one slot. The × must stay "armed" while the
+                                    // pointer is on it: moving onto it ends the row's own hover, so an ×
+                                    // that depended on the row alone vanished right under the cursor.
+                                    VerticalLayout {
+                                        alignment: center;
+                                        Rectangle {
+                                            property <bool> armed: lrow-ta.has-hover || del-ta.has-hover;
+                                            width: 20px; height: 20px; border-radius: 5px;
+                                            background: del-ta.has-hover ? Mx.danger-soft : transparent;
+                                            Text { text: l.count > 0 ? l.count : ""; color: Mx.faint; font-size: 10.5px; horizontal-alignment: center; vertical-alignment: center; visible: !parent.armed; }
+                                            Text { text: "×"; color: del-ta.has-hover ? Mx.danger : Mx.muted; font-size: 15px; horizontal-alignment: center; vertical-alignment: center; visible: parent.armed; }
+                                            del-ta := TouchArea { enabled: parent.armed; clicked => { root.delete-list(l.name); } }
+                                        }
+                                    }
+                                }
+                            }
+                            // Members of an open list: click = start (or details), × = take out.
+                            if l.open : VerticalLayout {
+                                padding-left: 14px; spacing: 1px;
+                                for t in l.tools : Rectangle {
+                                    height: 28px; border-radius: 7px;
+                                    background: (mrow-ta.has-hover || mx-ta.has-hover) ? Mx.tint-03 : transparent;
+                                    mrow-ta := TouchArea { clicked => { root.list-tool-clicked(t.id); } }
+                                    HorizontalLayout {
+                                        padding-left: 8px; padding-right: 6px; spacing: 8px;
+                                        VerticalLayout { alignment: center; Tile { mono: t.mono; icon: t.icon; has-icon: t.has-icon; size: 20px; radius: 4px; glyph: 8px; } }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Text {
+                                                text: t.title;
+                                                color: mrow-ta.has-hover ? Mx.text : (t.installed ? Mx.silver : Mx.faint);
+                                                font-size: 12px; overflow: elide;
+                                            }
+                                        }
+                                        Rectangle { horizontal-stretch: 1; }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Rectangle {
+                                                property <bool> armed: mrow-ta.has-hover || mx-ta.has-hover;
+                                                width: 18px; height: 18px; border-radius: 5px;
+                                                background: mx-ta.has-hover ? Mx.danger-soft : transparent;
+                                                // Status per Form: voller Punkt = auf dem Stick (Klick startet), Ring = nicht installiert.
+                                                Rectangle {
+                                                    visible: !parent.armed;
+                                                    width: 7px; height: 7px; border-radius: 3.5px;
+                                                    background: t.installed ? Mx.bit-done : transparent;
+                                                    border-width: t.installed ? 0px : 1px;
+                                                    border-color: Mx.steel;
+                                                    x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                                                }
+                                                Text { text: "×"; color: mx-ta.has-hover ? Mx.danger : Mx.muted; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; visible: parent.armed; }
+                                                mx-ta := TouchArea { enabled: parent.armed; clicked => { root.remove-from-list(t.name, l.name); } }
+                                            }
+                                        }
+                                    }
+                                }
+                                if l.tools.length == 0 : Text {
+                                    text: "Leer – Tools über das Listen-Symbol einer Karte hinzufügen oder hierher ziehen.";
+                                    color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
+                                }
+                            }
+                        }
+                        // Drop here = new list with this tool.
+                        if root.dragging : Rectangle {
+                            height: 34px; border-radius: Mx.radius-s;
+                            property <bool> over-me: root.drag-y >= self.absolute-position.y
+                                && root.drag-y <= self.absolute-position.y + self.height
+                                && root.drag-x >= self.absolute-position.x
+                                && root.drag-x <= self.absolute-position.x + self.width;
+                            changed over-me => {
+                                if (over-me) { root.drag-hover-list = "+new"; }
+                                else if (root.drag-hover-list == "+new") { root.drag-hover-list = ""; }
+                            }
+                            background: over-me ? Mx.tint-22 : transparent;
+                            border-width: 1px;
+                            border-color: over-me ? Mx.silver : Mx.line-strong;
+                            HorizontalLayout {
+                                padding-left: 10px; spacing: 8px;
+                                VerticalLayout { alignment: center; Text { text: "+"; color: Mx.silver; font-size: 15px; } }
+                                VerticalLayout { alignment: center; Text { text: "Neue Liste mit diesem Tool"; color: Mx.silver; font-size: 12px; } }
+                            }
+                        }
+                        if root.user-lists.length == 0 && !root.dragging : Text {
+                            text: "Noch keine Liste – oben mit + anlegen oder ein Tool am Listen-Symbol hierher ziehen.";
+                            color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
+                        }
+                    }
+                }
+                Rectangle { height: 8px; }
+
+                // Drive card (click to choose the stick / target folder) — chrome glow ring
+                Rectangle {
+                    height: 94px; border-radius: Mx.radius-l;
+                    clip: true;
+                    drop-shadow-color: Render.soft ? transparent : Mx.tint-22; drop-shadow-blur: Render.soft ? 0px : 11px;
+                    // Chrome sheen: bright at both edges, dark in the middle (which the inner
+                    // card covers) → the two bright edges sweep around the frame as it rotates.
+                    Rectangle {
+                        property <bool> circling: drive-ta.has-hover || root.busy;
+                        x: 0; y: 0; width: parent.width; height: parent.height;
+                        // Rounded itself: the software renderer clips the parent as a
+                        // rectangle, which left white gradient corners.
+                        border-radius: Mx.radius-l;
+                        background: Render.soft ? (self.circling ? Mx.steel : Mx.line-strong) : @linear-gradient((self.circling ? (animation-tick() / 4s) * 360deg : 135deg),
+                            Mx.text 0%, Mx.silver 10%, Mx.steel 22%, Mx.line-strong 40%, Mx.line 50%,
+                            Mx.line-strong 60%, Mx.steel 78%, Mx.silver 90%, Mx.text 100%);
+                    }
+                    // Inner card sits 2px in, leaving a slim glowing chrome ring around it
+                    Rectangle {
+                        x: 1.5px; y: 1.5px; width: parent.width - 3px; height: parent.height - 3px;
+                        border-radius: 12.5px;
+                        background: drive-ta.has-hover ? Mx.panel-2 : Mx.graphit;
+                        drive-ta := TouchArea { mouse-cursor: pointer; clicked => { root.open-picker(); } }
+                        VerticalLayout {
+                            padding: 12px; spacing: 8px;
+                            HorizontalLayout {
+                                spacing: 10px;
+                                Tile { mono: ""; size: 30px; radius: 7px;
+                                    Icon { kind: "disk"; tint: Mx.silver; width: 16px; height: 16px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    Text { text: root.drive-info; color: Mx.text; font-size: 12px; font-weight: 600; overflow: elide; }
+                                }
+                                Rectangle { horizontal-stretch: 1; }
+                                HorizontalLayout {
+                                    alignment: end; spacing: 3px;
+                                    Text { text: "wechseln"; color: Mx.silver; font-size: 10px; font-weight: 600; vertical-alignment: center; }
+                                    VerticalLayout { alignment: center; Icon { kind: "chevron"; tint: Mx.silver; width: 10px; height: 10px; } }
+                                }
+                            }
+                            // Capacity bar
+                            Bits { value: min(1.0, max(0.0, root.drive-fraction)); parts: 22; bar: 6px; spacing: 2px; }
+                            Text { text: root.drive-cap; color: Mx.faint; font-size: 10px; }
+                        }
+                    }
+                }
+                Rectangle { height: 4px; }
+                Text {
+                    text: root.build-tag; color: about-ta.has-hover ? Mx.silver : Mx.faint; font-size: 9px; horizontal-alignment: center;
+                    about-ta := TouchArea { mouse-cursor: pointer; clicked => { root.about-open = true; } }
+                }
+            }
+        }
+
+        // ── Content ──
+        // horizontal-stretch: 1 ist DIE Stelle, die das Fenster zusammenhält:
+        // Ohne ihn bekommt die Spalte im Root-HorizontalLayout (Sidebar hat
+        // feste 224px) ihre INHALTSGETRIEBENE Preferred-Breite. Wachsen die
+        // Kartentexte (async Update-Check), wächst die Spalte über den Slot
+        // hinaus und das Root-Layout läuft rechts aus dem festen Fenster —
+        // die rechte Karte der 2-Spalten-Reihen hing aus dem Bild.
+        contentcol := VerticalLayout {
+            horizontal-stretch: 1;
+            // Toolbar
+            Rectangle {
+                height: 64px;
+                Rectangle { y: parent.height - 1px; height: 1px; background: Mx.line; }
+                HorizontalLayout {
+                    padding-left: 22px; padding-right: 22px; spacing: 16px;
+                    VerticalLayout {
+                        alignment: center; spacing: 2px;
+                        Text { text: root.view-title; color: Render.soft ? Mx.text : Mx.chrome-text; font-size: 22px; font-weight: 700; }
+                        Text { text: root.view-subtitle; color: Mx.faint; font-size: 11.5px; }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    // View toggle: Liste (1 Spalte) / Kacheln (2 Spalten)
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
+                            HorizontalLayout {
+                                padding: 3px; spacing: 2px;
+                                Rectangle {
+                                    width: 34px; height: 30px; border-radius: Mx.radius-s;
+                                    background: root.grid-cols == 1 ? (Render.soft ? Mx.chrome-flat : Mx.chrome-btn) : (list-ta.has-hover ? Mx.tint-07 : transparent);
+                                    Icon { kind: "list"; tint: root.grid-cols == 1 ? Mx.on-chrome : Mx.muted; width: 17px; height: 17px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                                    list-ta := TouchArea { clicked => { root.set-cols(1); } }
+                                }
+                                Rectangle {
+                                    width: 34px; height: 30px; border-radius: Mx.radius-s;
+                                    background: root.grid-cols == 2 ? (Render.soft ? Mx.chrome-flat : Mx.chrome-btn) : (grid-ta.has-hover ? Mx.tint-07 : transparent);
+                                    Icon { kind: "grid"; tint: root.grid-cols == 2 ? Mx.on-chrome : Mx.muted; width: 17px; height: 17px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                                    grid-ta := TouchArea { clicked => { root.set-cols(2); } }
+                                }
+                            }
+                        }
+                    }
+                    // Verified-only toggle (search view only)
+                    if root.current-view == "search" : VerticalLayout {
+                      alignment: center;
+                      Rectangle {
+                        width: 214px; height: 38px; border-radius: 19px;
+                        background: vt.has-hover ? Mx.tint-07 : Mx.wash;
+                        border-width: 1px; border-color: vt.has-hover ? Mx.steel : Mx.line-strong;
+                        vt := TouchArea { mouse-cursor: pointer; clicked => { root.toggle-verified(); } }
+                        HorizontalLayout {
+                            padding-left: 11px; padding-right: 12px; spacing: 9px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 16px; height: 16px; border-radius: 4px;
+                                    background: root.verified-only ? Mx.silver : transparent;
+                                    border-width: 1px; border-color: root.verified-only ? Mx.silver : Mx.line-strong;
+                                    if root.verified-only : Icon {
+                                        kind: "installed"; tint: Mx.on-chrome; width: 12px; height: 12px;
+                                        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                                    }
+                                }
+                            }
+                            Text {
+                                text: "Nur verifizierte Quellen";
+                                color: root.verified-only ? Mx.text : Mx.muted;
+                                font-size: 12px; font-weight: 600; vertical-alignment: center;
+                            }
+                        }
+                      }
+                    }
+                    // Search
+                    VerticalLayout {
+                      alignment: center;
+                      horizontal-stretch: 1;
+                      min-width: 150px;
+                      max-width: 300px;
+                      Rectangle {
+                        height: 38px;
+                        border-radius: Mx.radius-s;
+                        background: Mx.bg;
+                        border-width: 1px;
+                        border-color: search-ti.has-focus ? Mx.silver : Mx.line-strong;
+                        animate border-color { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+                        drop-shadow-color: Render.soft ? transparent : Mx.tint-12;
+                        drop-shadow-blur: Render.soft ? 0px : (search-ti.has-focus ? 8px : 0px);
+                        animate drop-shadow-blur { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+                        HorizontalLayout {
+                            padding-left: 12px; padding-right: 12px; spacing: 9px;
+                            VerticalLayout { alignment: center; Icon { kind: "search"; tint: Mx.muted; width: 16px; height: 16px; } }
+                            search-ti := TextInput {
+                                vertical-alignment: center;
+                                color: Mx.text;
+                                font-size: 13px;
+                                horizontal-stretch: 1;
+                                edited => { root.search-changed(self.text); }
+                            }
+                        }
+                        Text {
+                            x: 37px;
+                            text: root.current-view == "search" ? "Im ganzen Scoop-Katalog suchen…" : "Suchen…";
+                            color: Mx.faint;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            height: parent.height;
+                            visible: search-ti.text == "";
+                        }
+                      }
+                    }
+                }
+            }
+
+            // List (catalog / installed / updates / search / categories)
+            // horizontal-stretch: 1 ist Pflicht: ohne ihn bekommt der ScrollView
+            // seine INHALTSGETRIEBENE Preferred-Breite (lange Kartentexte) statt
+            // der Slot-Breite aus dem Fenster-Layout und läuft 200px+ über den
+            // sichtbaren Bereich hinaus (die Karten rutschten aus dem Bild).
+            if root.current-view != "cli" : sv := ScrollView {
+                vertical-stretch: 1;
+                horizontal-stretch: 1;
+                VerticalLayout {
+                    padding: 18px; spacing: 9px;
+                    // Content-Breite hart am Viewport kappen — sonst bläht der
+                    // ScrollView den Inhalt auf dessen Preferred-Breite auf.
+                    width: sv.visible-width;
+
+                    // Search controls: sort + page size (only in the search view).
+                    if root.current-view == "search" : HorizontalLayout {
+                        spacing: 9px;
+                        VerticalLayout { alignment: center; Text { text: "Sortieren"; color: Mx.faint; font-size: 11px; } }
+                        Rectangle {
+                            border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
+                            HorizontalLayout {
+                                padding: 3px; spacing: 2px;
+                                SegItem { label: "Relevanz"; active: root.search-sort == "relevanz"; clicked => { root.set-sort("relevanz"); } }
+                                SegItem { label: "Sterne"; active: root.search-sort == "sterne"; clicked => { root.set-sort("sterne"); } }
+                                SegItem { label: "Name"; active: root.search-sort == "name"; clicked => { root.set-sort("name"); } }
+                            }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        VerticalLayout { alignment: center; Text { text: "Anzahl"; color: Mx.faint; font-size: 11px; } }
+                        Rectangle {
+                            border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
+                            HorizontalLayout {
+                                padding: 3px; spacing: 2px;
+                                SegItem { label: "10"; active: root.search-page-size == 10; clicked => { root.set-page-size(10); } }
+                                SegItem { label: "20"; active: root.search-page-size == 20; clicked => { root.set-page-size(20); } }
+                                SegItem { label: "50"; active: root.search-page-size == 50; clicked => { root.set-page-size(50); } }
+                            }
+                        }
+                    }
+
+                    // Category filter (Entdecken): chips wrap into lines computed in Rust.
+                    if root.current-view == "discover" && root.chip-rows.length > 0 : VerticalLayout {
+                        spacing: 7px; padding-bottom: 2px;
+                        for cr in root.chip-rows : HorizontalLayout {
+                            alignment: start; spacing: 7px;
+                            for c in cr.chips : FilterChip {
+                                label: c.name == "" ? "Alle" : c.name;
+                                glyph: c.icon; count: c.count; active: c.active;
+                                clicked => { root.set-discover-cat(c.name); }
+                            }
+                        }
+                    }
+
+                    for row in root.rows : Rectangle {
+                        // KEINE explizite Breite hier setzen: width: würde auch
+                        // min/preferred auf denselben Wert ziehen und mit dem
+                        // ScrollView/Fenster eine Preferred-Size-Rückkopplung
+                        // bilden (Content wuchs 600 -> 780+). preferred-width: 0
+                        // kappt die Meldung inhaltsgetriebener Breiten nach oben;
+                        // die echte Breite kommt vom VerticalLayout-Stretch.
+                        preferred-width: 0px;
+                        // Feste Zeilenhöhen == exaktes Inhaltsbudget der Karten
+                        // (GridCard: 28 Padding + 44 Header + 32 Summary + 20 Status
+                        // + 34 Aktionen + 4x8 Spacing = 190). NIEMALS kleiner machen,
+                        // sonst läuft Karteninhalt über die Zeile hinaus.
+                        height: row.kind == "header" ? 42px
+                            : row.kind == "updateall" ? 62px
+                            : row.kind == "feature" ? 130px
+                            : row.kind == "pair" ? 190px
+                            : 98px;
+                        if row.kind == "header" : HeaderRow { number: row.a.mono; title: row.a.name; star: row.a.star; glyph: row.a.glyph; count: row.a.count; }
+                        if row.kind == "updateall" : Rectangle {
+                            border-radius: Mx.radius-l;
+                            background: Render.soft ? Mx.card-flat : Mx.card;
+                            border-width: 1px; border-color: Mx.line-strong;
+                            HorizontalLayout {
+                                padding-left: 16px; padding-right: 16px; spacing: 14px;
+                                VerticalLayout {
+                                    alignment: center; spacing: 2px; horizontal-stretch: 1;
+                                    Text { text: "Alle Updates installieren"; color: Mx.text; font-size: 15px; font-weight: 600; }
+                                    Text { text: "Beim Start wird automatisch auf neue Versionen geprüft."; color: Mx.muted; font-size: 11px; }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    ChromeButton { label: "Alle aktualisieren"; min-width: 168px; clicked => { root.update-all(); } }
+                                }
+                            }
+                        }
+                        if row.kind == "feature" : FeatureCard {
+                            item: row.a;
+                            opacity: root.dragging && root.drag-id == row.a.id ? 0.45 : 1.0;
+                            animate opacity { duration: 140ms; }
+                            install(id) => { root.install(id); }
+                            launch(id) => { root.launch(id); }
+                            remove(id) => { root.remove(id); }
+                            update(id) => { root.update(id); }
+                            cancel(id) => { root.cancel(id); }
+                            open(id) => { root.open(id); }
+                            details(id) => { root.show-details(id); }
+                            addlist(id) => { root.open-list-menu(id); }
+                            terminal(id) => { root.open-terminal(id); }
+                            dragmove(did, nm, mo, hi, ic, dx, dy) => { root.dragging = true; root.drag-id = did; root.drag-tool = nm; root.drag-mono = mo; root.drag-has-icon = hi; root.drag-icon = ic; root.drag-x = dx; root.drag-y = dy; }
+                            dragend() => {
+                                if (root.dragging && root.drag-hover-list == "+new") { root.drop-new-list(root.drag-id); }
+                                else if (root.dragging && root.drag-hover-list != "") { root.drop-on-list-id(root.drag-id, root.drag-hover-list); }
+                                root.dragging = false; root.drag-hover-list = "";
+                            }
+                        }
+                        if row.kind == "tool" : ToolCard {
+                            item: row.a;
+                            opacity: root.dragging && root.drag-id == row.a.id ? 0.45 : 1.0;
+                            animate opacity { duration: 140ms; }
+                            install(id) => { root.install(id); }
+                            launch(id) => { root.launch(id); }
+                            remove(id) => { root.remove(id); }
+                            update(id) => { root.update(id); }
+                            cancel(id) => { root.cancel(id); }
+                            open(id) => { root.open(id); }
+                            details(id) => { root.show-details(id); }
+                            addlist(id) => { root.open-list-menu(id); }
+                            terminal(id) => { root.open-terminal(id); }
+                            dragmove(did, nm, mo, hi, ic, dx, dy) => { root.dragging = true; root.drag-id = did; root.drag-tool = nm; root.drag-mono = mo; root.drag-has-icon = hi; root.drag-icon = ic; root.drag-x = dx; root.drag-y = dy; }
+                            dragend() => {
+                                if (root.dragging && root.drag-hover-list == "+new") { root.drop-new-list(root.drag-id); }
+                                else if (root.dragging && root.drag-hover-list != "") { root.drop-on-list-id(root.drag-id, root.drag-hover-list); }
+                                root.dragging = false; root.drag-hover-list = "";
+                            }
+                        }
+                        // Zwei Karten nebeneinander via HorizontalLayout + gleichem
+                        // Stretch. Der Knackpunkt ist GridCards preferred-width: 0px
+                        // (s. dort): Ohne ihn verteilt der Solver die Breite nach den
+                        // natürlichen Inhaltsbreiten (2:1 bzw. Karte B auf null) UND
+                        // die Preferred-Size der Zeile bläht den ScrollView-Content
+                        // über den Viewport hinaus auf.
+                        if row.kind == "pair" : HorizontalLayout {
+                            spacing: 12px;
+                            GridCard {
+                                item: row.a; horizontal-stretch: 1; vertical-stretch: 1;
+                                opacity: root.dragging && root.drag-id == row.a.id ? 0.45 : 1.0;
+                                animate opacity { duration: 140ms; }
+                                install(id) => { root.install(id); }
+                                launch(id) => { root.launch(id); }
+                                remove(id) => { root.remove(id); }
+                                update(id) => { root.update(id); }
+                                cancel(id) => { root.cancel(id); }
+                                open(id) => { root.open(id); }
+                                details(id) => { root.show-details(id); }
+                            addlist(id) => { root.open-list-menu(id); }
+                            terminal(id) => { root.open-terminal(id); }
+                            dragmove(did, nm, mo, hi, ic, dx, dy) => { root.dragging = true; root.drag-id = did; root.drag-tool = nm; root.drag-mono = mo; root.drag-has-icon = hi; root.drag-icon = ic; root.drag-x = dx; root.drag-y = dy; }
+                            dragend() => {
+                                if (root.dragging && root.drag-hover-list == "+new") { root.drop-new-list(root.drag-id); }
+                                else if (root.dragging && root.drag-hover-list != "") { root.drop-on-list-id(root.drag-id, root.drag-hover-list); }
+                                root.dragging = false; root.drag-hover-list = "";
+                            }
+                            }
+                            if row.has-b : GridCard {
+                                item: row.b; horizontal-stretch: 1; vertical-stretch: 1;
+                                opacity: root.dragging && root.drag-id == row.b.id ? 0.45 : 1.0;
+                                animate opacity { duration: 140ms; }
+                                install(id) => { root.install(id); }
+                                launch(id) => { root.launch(id); }
+                                remove(id) => { root.remove(id); }
+                                update(id) => { root.update(id); }
+                                cancel(id) => { root.cancel(id); }
+                                open(id) => { root.open(id); }
+                                details(id) => { root.show-details(id); }
+                            addlist(id) => { root.open-list-menu(id); }
+                            terminal(id) => { root.open-terminal(id); }
+                            dragmove(did, nm, mo, hi, ic, dx, dy) => { root.dragging = true; root.drag-id = did; root.drag-tool = nm; root.drag-mono = mo; root.drag-has-icon = hi; root.drag-icon = ic; root.drag-x = dx; root.drag-y = dy; }
+                            dragend() => {
+                                if (root.dragging && root.drag-hover-list == "+new") { root.drop-new-list(root.drag-id); }
+                                else if (root.dragging && root.drag-hover-list != "") { root.drop-on-list-id(root.drag-id, root.drag-hover-list); }
+                                root.dragging = false; root.drag-hover-list = "";
+                            }
+                            }
+                            if !row.has-b : Rectangle { horizontal-stretch: 1; vertical-stretch: 1; }
+                        }
+                    }
+
+                    if root.rows.length == 0 : Rectangle {
+                        height: 140px;
+                        Text {
+                            width: parent.width; height: parent.height;
+                            text: root.current-view == "search" ? "Tippe oben, um im Scoop-Katalog zu suchen." : "Nichts hier.";
+                            color: Mx.faint; font-size: 14px;
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                    }
+
+                    // Pagination footer for the search view.
+                    if root.current-view == "search" && root.search-has-more : Rectangle {
+                        height: 54px;
+                        HorizontalLayout {
+                            alignment: center;
+                            VerticalLayout {
+                                alignment: center;
+                                GhostButton {
+                                    label: root.search-loading-more ? "Lädt …" : "Mehr anzeigen";
+                                    min-width: 190px;
+                                    clicked => { if (!root.search-loading-more) { root.load-more(); } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── CLI-Werkzeuge view ──
+            if root.current-view == "cli" : ScrollView {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding: 18px; spacing: 12px;
+                    // IT-Konsole intro
+                    Rectangle {
+                        height: 92px; border-radius: Mx.radius-l;
+                        background: Render.soft ? Mx.card-flat : Mx.card;
+                        border-width: 1px; border-color: Mx.line-strong;
+                        HorizontalLayout {
+                            padding: 18px; spacing: 15px;
+                            Rectangle {
+                                width: 44px; height: 44px; border-radius: Mx.radius;
+                                background: Mx.graphit;
+                                border-width: 1px; border-color: Mx.line-strong;
+                                Icon { kind: "cli"; tint: Mx.silver; width: 22px; height: 22px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                            }
+                            VerticalLayout {
+                                alignment: center; spacing: 3px; horizontal-stretch: 1;
+                                Text { text: "IT-Konsole"; color: Mx.text; font-size: 17px; font-weight: 700; }
+                                Text { text: "Eine Shell, in der alle installierten CLI-Tools gleichzeitig im PATH liegen."; color: Mx.muted; font-size: 12.5px; wrap: word-wrap; }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                ChromeButton { label: "Konsole öffnen"; min-width: 150px; clicked => { root.open-console(); } }
+                            }
+                        }
+                    }
+                    for item in root.cli-tools : CliCard {
+                        item: item;
+                        terminal(id) => { root.open-terminal(id); }
+                        install(id) => { root.install(id); }
+                        copy(c) => { root.copy-cmd(c); }
+                    }
+                    if root.cli-tools.length == 0 : Rectangle {
+                        height: 120px;
+                        Text {
+                            width: parent.width; height: parent.height;
+                            text: "Keine CLI-Werkzeuge im Katalog.";
+                            color: Mx.faint; font-size: 14px;
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+      }
+
+      // ── Detail drawer scrim ──
+      Rectangle {
+        background: Mx.scrim;
+        opacity: root.drawer-open ? 0.55 : 0.0;
+        animate opacity { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        TouchArea { enabled: root.drawer-open; clicked => { root.drawer-close(); } }
+      }
+
+      // ── Detail drawer ──
+      Rectangle {
+        width: 440px;
+        height: parent.height;
+        x: root.drawer-open ? parent.width - self.width : parent.width + 6px;
+        animate x { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        background: Mx.panel;
+        Rectangle { x: 0; width: 1px; height: parent.height; background: Mx.line-strong; }
+        Ticks { tick: 12px; }
+        VerticalLayout {
+          padding: 22px; spacing: 13px;
+          // Header
+          HorizontalLayout {
+            spacing: 12px;
+            Tile { mono: root.drawer-mono; icon: root.drawer-icon; has-icon: root.drawer-has-icon; size: 52px; radius: Mx.radius; glyph: 17px; }
+            VerticalLayout {
+              alignment: center; spacing: 3px;
+              MxLabel { text: "TOOL · " + root.drawer-category; font-size: 9.5px; letter-spacing: 1.9px; }
+              Text { text: root.drawer-name; color: Render.soft ? Mx.text : Mx.chrome-text; font-size: 20px; font-weight: 700; }
+              Text { text: "v" + root.drawer-version; color: Mx.faint; font-size: 11.5px; }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle {
+              width: 32px; height: 32px; border-radius: 16px; background: close-ta.has-hover ? Mx.tint-07 : Mx.wash; border-width: 1px; border-color: close-ta.has-hover ? Mx.steel : Mx.line-strong;
+              Icon { kind: "x"; tint: close-ta.has-hover ? Mx.text : Mx.muted; width: 14px; height: 14px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+              close-ta := TouchArea { mouse-cursor: pointer; clicked => { root.drawer-close(); } }
+            }
+          }
+          Text { text: root.drawer-summary; color: Mx.muted; font-size: 13px; wrap: word-wrap; }
+
+          // Plugins / dependencies
+          if root.drawer-deps.length > 0 : Rectangle {
+            border-width: 1px; border-color: Mx.line;
+            Rectangle { x: 0; width: 2px; height: parent.height; background: Mx.steel; }
+            VerticalLayout {
+              padding: 13px; padding-left: 15px; spacing: 8px;
+              MxLabel { text: "PLUGINS & ABHÄNGIGKEITEN"; font-size: 10px; letter-spacing: 1.6px; }
+              for d in root.drawer-deps : Text { text: "·  " + d; color: Mx.silver; font-size: 12px; wrap: word-wrap; }
+            }
+          }
+
+          VerticalLayout {
+            spacing: 9px;
+            vertical-stretch: 0;
+            alignment: start;
+            Rectangle { height: 1px; background: Mx.line; }
+            SpecRow { label: "QUELLE"; value: root.drawer-source == "" ? "…" : root.drawer-source; mono: true; }
+            SpecRow { label: "PRÜFSUMME"; value: root.drawer-hash == "" ? "…" : root.drawer-hash; mono: true; }
+            SpecRow { label: "ZIELORDNER"; value: root.drawer-target; mono: true; }
+            SpecRow { label: "GRÖSSE"; value: root.drawer-size; }
+          }
+
+          if root.drawer-loading : Text { text: "Details werden geladen…"; color: Mx.faint; font-size: 11px; }
+
+          Rectangle { vertical-stretch: 1; }
+
+          // Footer
+          if root.drawer-action != "" : HorizontalLayout {
+            spacing: 10px;
+            GhostButton { label: "Abbrechen"; min-width: 104px; clicked => { root.drawer-close(); } }
+            ChromeButton { label: root.drawer-action; horizontal-stretch: 1; clicked => { root.drawer-primary(); } }
+          }
+        }
+      }
+
+      // ── Stick-root picker ──
+      if root.picker-open : Rectangle {
+        background: Mx.scrim;
+        opacity: 0.55;
+        TouchArea { clicked => { root.close-picker(); } }
+      }
+      if root.picker-open : Rectangle {
+        width: 470px;
+        height: picker-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        Ticks {}
+        picker-lay := VerticalLayout {
+          padding: 22px; spacing: 11px;
+          Text { text: "Stick-Wurzel wählen"; color: Mx.text; font-size: 17px; font-weight: 700; }
+          Text { text: "Wähle das Laufwerk deines Sticks – die Tools werden dann dort unter Tools\\ verwaltet."; color: Mx.muted; font-size: 12px; wrap: word-wrap; }
+
+          if root.drives.length > 0 : MxLabel { text: "ERKANNTE WECHSELDATENTRÄGER"; font-size: 10px; letter-spacing: 1.8px; }
+          for d in root.drives : GhostButton {
+            label: d.label;
+            clicked => { root.pick-drive(d.path); }
+          }
+          if root.drives.length == 0 : Text { text: "Kein Wechseldatenträger erkannt – nutze „Anderen Ordner wählen…“."; color: Mx.faint; font-size: 12px; wrap: word-wrap; }
+
+          Rectangle { height: 4px; }
+          ChromeButton { label: "Anderen Ordner wählen…"; clicked => { root.pick-folder(); } }
+          GhostButton { label: "Aktueller App-Ordner"; clicked => { root.pick-drive(root.app-folder); } }
+          GhostButton { label: "Abbrechen"; clicked => { root.close-picker(); } }
+        }
+      }
+
+      // ── Add-to-list popup ──
+      if root.list-menu-open : Rectangle {
+        background: Mx.scrim; opacity: 0.55;
+        TouchArea { clicked => { root.list-menu-open = false; } }
+      }
+      if root.list-menu-open : Rectangle {
+        width: 330px;
+        height: menu-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        Ticks {}
+        menu-lay := VerticalLayout {
+          padding: 18px; spacing: 7px;
+          Text { text: "Zu Liste hinzufügen"; color: Mx.text; font-size: 16px; font-weight: 700; }
+          Text { text: root.list-menu-title; color: Mx.muted; font-size: 12px; }
+          Rectangle { height: 4px; }
+          if root.list-menu-toggles.length == 0 : Text {
+            text: "Noch keine Liste. Lege links unter Meine Listen eine an.";
+            color: Mx.faint; font-size: 12px; wrap: word-wrap;
+          }
+          for t in root.list-menu-toggles : Rectangle {
+            height: 36px; border-radius: Mx.radius-s;
+            background: trow.has-hover ? Mx.tint-07 : transparent;
+            border-width: 1px; border-color: t.active ? Mx.steel : Mx.line;
+            trow := TouchArea { mouse-cursor: pointer; clicked => { root.toggle-list(root.list-menu-tool, t.name); } }
+            HorizontalLayout {
+              padding-left: 11px; padding-right: 11px; spacing: 9px;
+              VerticalLayout {
+                alignment: center;
+                Rectangle {
+                  width: 18px; height: 18px; border-radius: 4px;
+                  background: t.active ? Mx.silver : transparent;
+                  border-width: 1px; border-color: t.active ? Mx.silver : Mx.line-strong;
+                  if t.active : Icon { kind: "check"; tint: Mx.on-chrome; width: 12px; height: 12px; x: (parent.width - self.width)/2; y: (parent.height - self.height)/2; }
+                }
+              }
+              VerticalLayout { alignment: center; Text { text: t.name; color: Mx.text; font-size: 13px; } }
+              Rectangle { horizontal-stretch: 1; }
+            }
+          }
+          Rectangle { height: 4px; }
+          GhostButton { label: "+ Neue Liste…"; clicked => { root.list-menu-open = false; root.new-list-name = ""; root.new-list-tool-id = root.list-menu-id; root.new-list-tool-title = root.list-menu-title; root.new-list-open = true; } }
+          ChromeButton { label: "Fertig"; clicked => { root.list-menu-open = false; } }
+        }
+      }
+
+      // ── New-list input ──
+      if root.new-list-open : Rectangle {
+        background: Mx.scrim; opacity: 0.55;
+        TouchArea { clicked => { root.new-list-open = false; } }
+      }
+      if root.new-list-open : Rectangle {
+        width: 360px;
+        height: nl-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        init => { nl-ti.focus(); }
+        Ticks {}
+        nl-lay := VerticalLayout {
+          padding: 20px; spacing: 12px;
+          Text { text: "Neue Liste"; color: Mx.text; font-size: 16px; font-weight: 700; }
+          if root.new-list-tool-title != "" : Text { text: root.new-list-tool-title + " kommt direkt hinein."; color: Mx.silver; font-size: 12px; }
+          Rectangle {
+            height: 40px; border-radius: Mx.radius-s; background: Mx.bg;
+            border-width: 1px; border-color: nl-ti.has-focus ? Mx.silver : Mx.line-strong;
+            if root.new-list-name == "" : Text { text: "z. B. Pentest, Datenrettung, Alltag…"; color: Mx.faint; font-size: 13px; x: 13px; vertical-alignment: center; }
+            nl-ti := TextInput {
+              x: 13px; width: parent.width - 26px; height: parent.height;
+              color: Mx.text; font-size: 13px; vertical-alignment: center; single-line: true;
+              text <=> root.new-list-name;
+              accepted => { root.create-list(root.new-list-name); }
+            }
+          }
+          HorizontalLayout {
+            spacing: 8px;
+            Rectangle { horizontal-stretch: 1; }
+            GhostButton { label: "Abbrechen"; clicked => { root.new-list-open = false; } }
+            ChromeButton { label: "Anlegen"; clicked => { root.create-list(root.new-list-name); } }
+          }
+        }
+      }
+
+      // ── Confirmation for destructive actions ──
+      if root.confirm-open : Rectangle {
+        background: Mx.scrim; opacity: 0.6;
+        TouchArea { clicked => { root.confirm-open = false; } }
+      }
+      if root.confirm-open : Rectangle {
+        width: 420px;
+        height: cf-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.danger-line;
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 28px; drop-shadow-offset-y: Render.soft ? 0px : 8px;
+        Ticks { tint: Mx.danger; }
+        cf-lay := VerticalLayout {
+          padding: 20px; spacing: 12px;
+          Text { text: root.confirm-title; color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
+          Text { text: root.confirm-text; color: Mx.muted; font-size: 12.5px; wrap: word-wrap; }
+          HorizontalLayout {
+            spacing: 8px; padding-top: 4px;
+            Rectangle { horizontal-stretch: 1; }
+            GhostButton { label: "Abbrechen"; clicked => { root.confirm-open = false; } }
+            DangerButton { label: root.confirm-button; clicked => { root.confirm-open = false; root.confirm-accept(); } }
+          }
+        }
+      }
+
+      // ── Über: Lizenzen und der von der Slint-Lizenz verlangte Hinweis ──
+      if root.about-open : Rectangle {
+        background: Mx.scrim; opacity: 0.6;
+        TouchArea { clicked => { root.about-open = false; } }
+      }
+      if root.about-open : Rectangle {
+        width: 460px;
+        height: ab-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 28px; drop-shadow-offset-y: Render.soft ? 0px : 8px;
+        TouchArea {}
+        Ticks {}
+        ab-lay := VerticalLayout {
+          padding: 20px; spacing: 12px;
+          Text { text: "Maxtrix Portable Organizer"; color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
+          Text { text: root.build-tag; color: Mx.faint; font-size: 11px; }
+          Text {
+            text: "Open Source unter der MIT-Lizenz. Name und Logo „Maxtrix“ sind davon ausgenommen. Lizenzen der mitgelieferten Software (7-Zip, Slint, Schriften) stehen in THIRD-PARTY-NOTICES.txt neben der EXE.";
+            color: Mx.muted; font-size: 12.5px; wrap: word-wrap;
+          }
+          Rectangle {
+            height: 170px; border-radius: 4px; background: Mx.graphit; border-width: 1px; border-color: Mx.line;
+            AboutSlint { x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 16px; }
+          }
+          HorizontalLayout {
+            spacing: 8px; padding-top: 4px;
+            Rectangle { horizontal-stretch: 1; }
+            ChromeButton { label: "Schließen"; min-width: 110px; clicked => { root.about-open = false; } }
+          }
+        }
+      }
+
+      // ── First close: tray or quit? ──
+      if root.close-ask-open : Rectangle {
+        background: Mx.scrim; opacity: 0.6;
+        TouchArea { clicked => { root.close-ask-open = false; } }
+      }
+      if root.close-ask-open : Rectangle {
+        width: 460px;
+        height: ca-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 28px; drop-shadow-offset-y: Render.soft ? 0px : 8px;
+        Ticks {}
+        ca-lay := VerticalLayout {
+          padding: 20px; spacing: 12px;
+          Text { text: "Maxtrix im Hintergrund weiterlaufen lassen?"; color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
+          Text {
+            text: "Im Infobereich (unten rechts, neben der Uhr) bleibt Maxtrix startbereit – ein Klick aufs Symbol öffnet den Schnellstart. Beenden jederzeit per Rechtsklick aufs Symbol → „Beenden“. Dort lässt sich die Wahl auch wieder ändern.";
+            color: Mx.muted; font-size: 12.5px; wrap: word-wrap;
+          }
+          HorizontalLayout {
+            spacing: 8px; padding-top: 4px;
+            Rectangle { horizontal-stretch: 1; }
+            GhostButton { label: "Beenden"; min-width: 96px; clicked => { root.close-ask-open = false; root.close-quit(); } }
+            ChromeButton { label: "Im Hintergrund weiterlaufen"; min-width: 214px; clicked => { root.close-ask-open = false; root.close-to-tray(); } }
+          }
+        }
+      }
+
+      // ── Toast (short confirmation; slides in at the bottom, Rust hides it again) ──
+      toast := Rectangle {
+        property <bool> shown: root.toast-visible;
+        width: min(parent.width - 40px, min(600px, toast-lay.preferred-width));
+        height: 42px;
+        x: (parent.width - self.width) / 2;
+        y: self.shown ? parent.height - self.height - 24px : parent.height + 12px;
+        animate y { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        opacity: self.shown ? 1.0 : 0.0;
+        animate opacity { duration: Mx.dur; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        border-radius: 21px;
+        background: Mx.panel-2;
+        border-width: 1px;
+        border-color: root.toast-kind == "error" ? Mx.danger-line : Mx.line-strong;
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 22px; drop-shadow-offset-y: Render.soft ? 0px : 6px;
+        toast-lay := HorizontalLayout {
+          padding-left: 16px; padding-right: root.toast-action != "" ? 7px : 18px; spacing: 10px;
+          VerticalLayout {
+            alignment: center;
+            Icon {
+              kind: root.toast-kind == "error" ? "x" : (root.toast-kind == "ok" ? "check" : "info");
+              tint: root.toast-kind == "error" ? Mx.danger : (root.toast-kind == "ok" ? Mx.bit-done : Mx.silver);
+              width: 15px; height: 15px;
+            }
+          }
+          VerticalLayout { alignment: center; Text { text: root.toast-text; color: Mx.text; font-size: 12.5px; overflow: elide; } }
+          if root.toast-action != "" : VerticalLayout {
+            alignment: center;
+            Rectangle {
+              height: 28px; width: act-t.preferred-width + 24px; border-radius: 14px;
+              background: Render.soft ? Mx.chrome-flat : Mx.chrome-btn;
+              act-t := Text { text: root.toast-action; color: Mx.on-chrome; font-size: 12px; font-weight: 600; x: 12px; height: parent.height; vertical-alignment: center; }
+              act-ta := TouchArea { mouse-cursor: pointer; clicked => { root.toast-action-clicked(); } }
+            }
+          }
+        }
+      }
+
+      // ── Drag ghost (follows the cursor; no TouchArea so it never blocks the drag) ──
+      if root.dragging : ghost := Rectangle {
+        property <bool> target: root.drag-hover-list != "";
+        x: min(root.drag-x + 14px, parent.width - self.width - 6px);
+        y: min(root.drag-y + 10px, parent.height - self.height - 6px);
+        width: 230px; height: 50px;
+        border-radius: Mx.radius;
+        background: Mx.panel-2;
+        border-width: 1px;
+        border-color: self.target ? Mx.text : Mx.line-strong;
+        animate border-color { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 22px; drop-shadow-offset-y: Render.soft ? 0px : 9px;
+        HorizontalLayout {
+          padding-left: 10px; padding-right: 12px; spacing: 10px;
+          VerticalLayout { alignment: center; Tile { mono: root.drag-mono; icon: root.drag-icon; has-icon: root.drag-has-icon; size: 30px; radius: 6px; glyph: 11px; } }
+          VerticalLayout {
+            alignment: center; spacing: 1px;
+            Text { text: root.drag-tool; color: Mx.text; font-size: 12.5px; font-weight: 600; overflow: elide; }
+            Text {
+              text: !ghost.target ? "Auf eine Liste links ziehen"
+                : (root.drag-hover-list == "+new" ? "+ neue Liste anlegen" : "→ " + root.drag-hover-list);
+              color: ghost.target ? Mx.text : Mx.faint; font-size: 11px; overflow: elide;
+            }
+          }
+        }
+      }
+    }
+    }
+}
+
+// Compact tray quick-launch window: name + icon per tool, grouped by category.
+export component MiniWindow inherits Window {
+    title: "Maxtrix — Schnellstart";
+    default-font-family: "Saira";
+    width: 300px;
+    height: 470px;
+    background: Mx.bg;
+
+    in property <[MiniItem]> tools;
+    callback launch(int);
+    callback open-main();
+
+    VerticalLayout {
+        // Header
+        Rectangle {
+            height: 46px; background: Mx.panel;
+            Rectangle { y: parent.height - 1px; height: 1px; background: Mx.line; }
+            HorizontalLayout {
+                padding-left: 14px; padding-right: 10px; spacing: 10px;
+                VerticalLayout { alignment: center; Image { source: @image-url("assets/maxtrix-icon-chrome-1024.png"); width: 22px; height: 22px; } }
+                VerticalLayout { alignment: center; Text { text: "MAXTRIX"; font-family: "Audiowide"; font-size: 13px; letter-spacing: 1px; color: Render.soft ? Mx.text : Mx.chrome-text; } }
+                Rectangle { horizontal-stretch: 1; }
+                Rectangle {
+                    width: 30px; height: 30px; border-radius: 15px; y: (parent.height - 30px) / 2;
+                    background: om.has-hover ? Mx.tint-07 : Mx.wash; border-width: 1px; border-color: om.has-hover ? Mx.steel : Mx.line-strong;
+                    Icon { kind: "grid"; tint: Mx.silver; width: 15px; height: 15px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                    om := TouchArea { clicked => { root.open-main(); } }
+                }
+            }
+        }
+        // Tool list
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                padding: 8px; spacing: 2px;
+                for it in root.tools : Rectangle {
+                    height: it.kind == "header" ? 26px : 38px;
+                    if it.kind == "header" : HorizontalLayout {
+                        padding-left: 8px; padding-top: 8px;
+                        MxLabel { text: it.name; font-size: 9.5px; letter-spacing: 1.9px; }
+                    }
+                    if it.kind == "tool" : Rectangle {
+                        border-radius: Mx.radius-s; background: row-ta.has-hover ? Mx.tint-07 : transparent;
+                        row-ta := TouchArea { clicked => { root.launch(it.id); } }
+                        HorizontalLayout {
+                            padding-left: 8px; padding-right: 8px; spacing: 10px;
+                            VerticalLayout { alignment: center; Tile { mono: it.mono; icon: it.icon; has-icon: it.has-icon; size: 26px; radius: Mx.radius-s; glyph: 10px; } }
+                            Text { text: it.name; color: Mx.text; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                        }
+                    }
+                }
+                if root.tools.length == 0 : Rectangle {
+                    height: 120px;
+                    Text {
+                        width: parent.width; height: parent.height;
+                        text: "Noch keine Tools installiert.";
+                        color: Mx.faint; font-size: 13px;
+                        horizontal-alignment: center; vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}
