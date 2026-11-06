@@ -151,11 +151,20 @@ pub fn fetch_named(name: &str) -> Result<(Manifest, &'static CatalogEntry)> {
 /// Fetch a dependency manifest by Scoop "bucket/name" reference.
 pub fn fetch_ref(reference: &str) -> Result<Manifest> {
     let (bucket, name) = resolver::parse_ref(reference);
+    if !resolver::valid_tool_name(&name) {
+        return Err(anyhow!("Ungültiger Tool-Name im Verweis: {reference}"));
+    }
     fetch_manifest(&raw_url(&bucket, &name)?, &name)
 }
 
+///
+/// Last line of defence: whatever `name` holds, the result stays one folder below the
+/// category. Names from outside are rejected earlier by `resolver::valid_tool_name`;
+/// folder names found on disk may contain spaces and stay as they are.
 pub fn install_dir(root: &Path, category: &str, name: &str) -> PathBuf {
-    root.join("Tools").join(category).join(name)
+    let safe = name.replace(['/', '\\', ':'], "_");
+    let safe = if safe.trim_matches(['.', ' ']).is_empty() { "_".to_string() } else { safe };
+    root.join("Tools").join(category).join(safe)
 }
 
 fn dir_nonempty(p: &Path) -> bool {
@@ -219,6 +228,9 @@ pub fn install_resolved(
     on: &dyn Fn(InstallEvent),
     cancel: &AtomicBool,
 ) -> Result<InstallSummary> {
+    if !resolver::valid_tool_name(&main.name) {
+        return Err(anyhow!("Ungültiger Tool-Name: {}", main.name));
+    }
     let main_dir = install_dir(root, category, &main.name);
     // A running tool can't be swapped — say so before a long download.
     fsutil::ensure_not_in_use(&main_dir, &main.name)?;
@@ -416,6 +428,9 @@ pub fn install_from_repo(
     on: &dyn Fn(InstallEvent),
     cancel: &AtomicBool,
 ) -> Result<InstallSummary> {
+    if !resolver::valid_tool_name(name) {
+        return Err(anyhow!("Ungültiger Tool-Name: {name}"));
+    }
     let main = fetch_manifest_from_repo(repo, file_path, name)?;
     install_resolved(&main, root, category, on, cancel)
 }

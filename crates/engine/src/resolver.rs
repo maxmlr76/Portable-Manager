@@ -59,6 +59,15 @@ pub fn parse_ref(reference: &str) -> (String, String) {
     }
 }
 
+/// Is this a safe tool name from an outside source (manifest, search hit)? It becomes a
+/// folder name and part of a URL, so it must be one plain path component.
+pub fn valid_tool_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('.')
+        && !name.contains("..")
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '+' | '-'))
+}
+
 /// Map a Scoop bucket name to its GitHub repo under github.com/ScoopInstaller.
 pub fn bucket_repo(bucket: &str) -> Option<&'static str> {
     Some(match bucket.to_ascii_lowercase().as_str() {
@@ -191,6 +200,16 @@ pub fn build_launch_profile(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tool_names_cannot_leave_their_folder() {
+        for good in ["7zip", "notepad++", "yt-dlp", "vcredist_2022", "python3.12"] {
+            assert!(valid_tool_name(good), "{good}");
+        }
+        for bad in ["", ".", "..", "..\\x", "../x", "a/b", "a\\b", "C:x", "a..b", ".hidden", "a b"] {
+            assert!(!valid_tool_name(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn scoop_dir_variables_map_to_the_app_folder() {

@@ -134,7 +134,24 @@ pub fn tool_session(root: &Path, category: &str, name: &str) -> Result<CliSessio
 
 /// Escape a value for a PowerShell single-quoted string literal.
 fn ps_lit(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "''"))
+    // PowerShell also ends a string at the typographic quotes, so double those too.
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('\'');
+    for c in s.chars() {
+        if matches!(c, '\'' | '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{201B}') {
+            out.push(c);
+        }
+        out.push(c);
+    }
+    out.push('\'');
+    out
+}
+
+/// Environment variable names come from manifests and go into the script as code.
+fn valid_env_name(k: &str) -> bool {
+    let mut chars = k.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 /// Spawn a fresh PowerShell console running `startup`, then stay interactive.
@@ -162,6 +179,9 @@ pub fn open_terminal(
 ) -> Result<()> {
     let mut s = String::new();
     for (k, v) in env {
+        if !valid_env_name(k) {
+            continue;
+        }
         s.push_str(&format!("$env:{} = {}; ", k, ps_lit(v)));
     }
     if !path_dirs.is_empty() {
@@ -232,4 +252,19 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
     }
     child.wait().ok();
     Ok(())
+}
+
+#[cfg(test)]
+mod injection_tests {
+    use super::*;
+
+    #[test]
+    fn script_text_cannot_be_broken_out_of() {
+        assert_eq!(ps_lit("a'b"), "'a''b'");
+        assert_eq!(ps_lit("a\u{2019}b"), "'a\u{2019}\u{2019}b'");
+        assert!(valid_env_name("JAVA_HOME"));
+        assert!(!valid_env_name("X; calc"));
+        assert!(!valid_env_name("1A"));
+        assert!(!valid_env_name(""));
+    }
 }
