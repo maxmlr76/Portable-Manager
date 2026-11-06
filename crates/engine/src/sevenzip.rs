@@ -56,7 +56,7 @@ pub fn find_7z() -> Option<PathBuf> {
 /// place — no second copy of the data.
 pub fn extract_7z_file(archive: &Path, dest: &Path, extract_dir: Option<&Path>, work_parent: &Path) -> Result<()> {
     let seven = find_7z().ok_or_else(|| {
-        anyhow!("kein 7-Zip gefunden — vendor/7-zip/7z.exe mitliefern oder MAXTRIX_7Z setzen")
+        anyhow!(crate::tr!("7-Zip not found: ship vendor/7-zip/7z.exe or set MAXTRIX_7Z", "kein 7-Zip gefunden — vendor/7-zip/7z.exe mitliefern oder MAXTRIX_7Z setzen"))
     })?;
     let out = fsutil::unique_dir(work_parent, "x")?;
     let result = (|| -> Result<()> {
@@ -95,12 +95,13 @@ pub fn extract_7z_file(archive: &Path, dest: &Path, extract_dir: Option<&Path>, 
             None => out.clone(),
         };
         if !src.is_dir() {
-            bail!(
+            bail!(crate::tr!(
+                "extract_dir '{}' not found in the archive",
                 "extract_dir '{}' nicht im Archiv gefunden",
                 extract_dir.map(|p| p.display().to_string()).unwrap_or_default()
-            );
+            ));
         }
-        fsutil::move_merge(&src, dest).context("Entpackte Dateien nicht verschiebbar")?;
+        fsutil::move_merge(&src, dest).context(crate::tr!("could not move the unpacked files", "Entpackte Dateien nicht verschiebbar"))?;
         Ok(())
     })();
     let _ = fs::remove_dir_all(&out);

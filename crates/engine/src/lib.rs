@@ -4,6 +4,7 @@
 //! hashing it -> verify -> unpack into a staging folder next to the tool ->
 //! carry over user data (`persist`) -> swap it in for `Tools\<Category>\<Name>\`.
 
+pub mod i18n;
 pub mod manifest;
 pub mod net;
 pub mod extract;
@@ -28,7 +29,7 @@ pub struct Cancelled;
 
 impl std::fmt::Display for Cancelled {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("vom Benutzer abgebrochen")
+        f.write_str(crate::tr!("cancelled by the user", "vom Benutzer abgebrochen").as_str())
     }
 }
 
@@ -60,7 +61,7 @@ impl StreamHasher {
             "sha512" => StreamHasher::Sha512(sha2::Sha512::new()),
             "sha1" => StreamHasher::Sha1(sha1::Sha1::new()),
             "md5" => StreamHasher::Md5(md5::Md5::new()),
-            other => anyhow::bail!("Hash-Algorithmus '{}' wird nicht unterstützt", other),
+            other => anyhow::bail!(crate::tr!("hash algorithm '{}' is not supported", "Hash-Algorithmus '{}' wird nicht unterstützt", other)),
         })
     }
 

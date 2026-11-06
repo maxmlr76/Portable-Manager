@@ -36,7 +36,7 @@ pub fn extract_msi_file(msi: &Path, dest: &Path, extract_dir: Option<&Path>) -> 
             code = run_admin_install(msi, &out)?;
         }
         if code != 0 && code != MSI_OK_REBOOT {
-            bail!("msiexec /a meldet Fehler {code}");
+            bail!(crate::tr!("msiexec /a reported error {code}", "msiexec /a meldet Fehler {code}"));
         }
 
         // The administrative image also contains a copy of the .msi — not wanted.
@@ -49,12 +49,13 @@ pub fn extract_msi_file(msi: &Path, dest: &Path, extract_dir: Option<&Path>) -> 
             None => out.clone(),
         };
         if !src.is_dir() {
-            bail!(
+            bail!(crate::tr!(
+                "folder '{}' not found in the MSI package",
                 "Ordner '{}' nicht im MSI-Paket gefunden",
                 extract_dir.map(|p| p.display().to_string()).unwrap_or_default()
-            );
+            ));
         }
-        fsutil::move_merge(&src, dest).context("Entpackte Dateien nicht verschiebbar")?;
+        fsutil::move_merge(&src, dest).context(crate::tr!("could not move the unpacked files", "Entpackte Dateien nicht verschiebbar"))?;
         Ok(())
     })();
     let _ = fs::remove_dir_all(&out);
@@ -70,7 +71,7 @@ fn run_admin_install(msi: &Path, out: &Path) -> Result<i32> {
         .raw_arg(format!("/a \"{}\" /qn TARGETDIR=\"{}\"", msi.display(), out.display()))
         .creation_flags(CREATE_NO_WINDOW)
         .status()
-        .context("msiexec konnte nicht gestartet werden")?;
+        .context(crate::tr!("could not start msiexec", "msiexec konnte nicht gestartet werden"))?;
     status.code().ok_or_else(|| anyhow!("msiexec wurde abgebrochen"))
 }
 

@@ -74,7 +74,7 @@ pub(crate) fn safe_rel(p: &str) -> Result<PathBuf> {
     if path.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir)) {
         Ok(path.to_path_buf())
     } else {
-        bail!("unzulässiger Pfad im Manifest: '{p}'")
+        bail!(crate::tr!("illegal path in manifest: '{p}'", "unzulässiger Pfad im Manifest: '{p}'"))
     }
 }
 
@@ -122,7 +122,7 @@ pub fn install(
         Ok(Staged { bytes, pending: None }) => {
             report.bytes = bytes as usize;
             report.files = fsutil::count_files(&staging).unwrap_or(0);
-            on(InstallEvent::Phase(&format!("  {} Dateien entpackt", report.files)));
+            on(InstallEvent::Phase(&crate::tr!("  {} files unpacked", "  {} Dateien entpackt", report.files)));
             Ok(report)
         }
         Ok(Staged { bytes, pending: Some((kind, reason)) }) => {
@@ -158,8 +158,8 @@ fn stage_artifacts(
     for (i, a) in m.artifacts.iter().enumerate() {
         check_cancel(cancel)?;
         let part = if parts > 1 { format!(" (Teil {}/{parts})", i + 1) } else { String::new() };
-        on(InstallEvent::Phase(&format!("Lade {} v{}{part} …", m.name, m.version)));
-        on(InstallEvent::Phase(&format!("  Quelle: {}", a.url)));
+        on(InstallEvent::Phase(&crate::tr!("Downloading {} v{}{part} …", "Lade {} v{}{part} …", m.name, m.version)));
+        on(InstallEvent::Phase(&crate::tr!("  Source: {}", "  Quelle: {}", a.url)));
 
         // Each part in its own folder: parts may share a file name.
         let dir = downloads.join(i.to_string());
@@ -168,18 +168,18 @@ fn stage_artifacts(
         let (n, actual) = net::download_to_file(&a.url, &file, &a.hash_alg, &|done, total| {
             on(InstallEvent::Download { done, total })
         }, cancel)?;
-        on(InstallEvent::Phase(&format!("  {} heruntergeladen ({n} Bytes)", human(n))));
+        on(InstallEvent::Phase(&crate::tr!("  {} downloaded ({n} bytes)", "  {} heruntergeladen ({n} Bytes)", human(n))));
 
-        on(InstallEvent::Phase(&format!("  Prüfe {} …", a.hash_alg.to_uppercase())));
+        on(InstallEvent::Phase(&crate::tr!("  Checking {} …", "  Prüfe {} …", a.hash_alg.to_uppercase())));
         net::check_hash(&a.hash_alg, &a.hash_hex, &actual)?;
-        on(InstallEvent::Phase("  Hash verifiziert \u{2713}"));
+        on(InstallEvent::Phase(&crate::tr!("  Hash verified \u{2713}", "  Hash verifiziert \u{2713}")));
         total += n;
 
         check_cancel(cancel)?;
-        on(InstallEvent::Phase("  Entpacke …"));
+        on(InstallEvent::Phase(&crate::tr!("  Unpacking …", "  Entpacke …")));
         if let Err(e) = unpack(a, &file, staging, work_parent) {
             let reason = e.to_string();
-            on(InstallEvent::Phase(&format!("  Entpacken übersprungen: {reason}")));
+            on(InstallEvent::Phase(&crate::tr!("  Unpacking skipped: {reason}", "  Entpacken übersprungen: {reason}")));
             return Ok(Staged { bytes: total, pending: Some((Kind::of(&a.ext).label(&a.ext), reason)) });
         }
         // Free the host's temp space right away (a later part may be large too).

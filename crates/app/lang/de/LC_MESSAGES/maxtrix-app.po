@@ -1,0 +1,237 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "INSTALLED"
+msgstr "INSTALLIERT"
+
+msgid "BROKEN"
+msgstr "DEFEKT"
+
+msgid "ERROR"
+msgstr "FEHLER"
+
+msgid "WORKING"
+msgstr "LÄUFT"
+
+msgid "Install"
+msgstr "Installieren"
+
+msgid "Retry"
+msgstr "Erneut versuchen"
+
+msgid "Reinstall"
+msgstr "Neu installieren"
+
+msgid "Remove"
+msgstr "Entfernen"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Launch"
+msgstr "Starten"
+
+msgid "Folder"
+msgstr "Ordner"
+
+msgid "Update"
+msgstr "Aktualisieren"
+
+msgid "Curated"
+msgstr "Kuratiert"
+
+msgid "Open terminal"
+msgstr "Terminal öffnen"
+
+msgid "copy"
+msgstr "kopieren"
+
+msgid "Click a command to copy it to the clipboard."
+msgstr "Klick auf einen Befehl kopiert ihn in die Zwischenablage."
+
+msgid "Not installed yet. Install it above, then a terminal opens with the tool on PATH."
+msgstr "Noch nicht installiert – oben installieren, dann öffnet sich ein Terminal mit dem Tool im PATH."
+
+msgid "Discover"
+msgstr "Entdecken"
+
+msgid "LIBRARY"
+msgstr "BIBLIOTHEK"
+
+msgid "Installed"
+msgstr "Installiert"
+
+msgid "Search all"
+msgstr "Alle durchsuchen"
+
+msgid "CLI tools"
+msgstr "CLI-Werkzeuge"
+
+msgid "DROP ON A LIST"
+msgstr "AUF LISTE ZIEHEN"
+
+msgid "MY LISTS"
+msgstr "MEINE LISTEN"
+
+msgid "Empty. Add tools with the list icon on a card, or drag them here."
+msgstr "Leer – Tools über das Listen-Symbol einer Karte hinzufügen oder hierher ziehen."
+
+msgid "New list with this tool"
+msgstr "Neue Liste mit diesem Tool"
+
+msgid "No lists yet. Create one with + above, or drag a tool here by its list icon."
+msgstr "Noch keine Liste – oben mit + anlegen oder ein Tool am Listen-Symbol hierher ziehen."
+
+msgid "change"
+msgstr "wechseln"
+
+msgid "Verified sources only"
+msgstr "Nur verifizierte Quellen"
+
+msgid "Search the whole Scoop catalog…"
+msgstr "Im ganzen Scoop-Katalog suchen…"
+
+msgid "Search…"
+msgstr "Suchen…"
+
+msgid "Sort"
+msgstr "Sortieren"
+
+msgid "Relevance"
+msgstr "Relevanz"
+
+msgid "Stars"
+msgstr "Sterne"
+
+msgid "Show"
+msgstr "Anzahl"
+
+msgid "All"
+msgstr "Alle"
+
+msgid "Install all updates"
+msgstr "Alle Updates installieren"
+
+msgid "New versions are checked automatically at startup."
+msgstr "Beim Start wird automatisch auf neue Versionen geprüft."
+
+msgid "Update all"
+msgstr "Alle aktualisieren"
+
+msgid "Type above to search the Scoop catalog."
+msgstr "Tippe oben, um im Scoop-Katalog zu suchen."
+
+msgid "Nothing here."
+msgstr "Nichts hier."
+
+msgid "Loading …"
+msgstr "Lädt …"
+
+msgid "Show more"
+msgstr "Mehr anzeigen"
+
+msgid "IT console"
+msgstr "IT-Konsole"
+
+msgid "A shell with all installed CLI tools on PATH at once."
+msgstr "Eine Shell, in der alle installierten CLI-Tools gleichzeitig im PATH liegen."
+
+msgid "Open console"
+msgstr "Konsole öffnen"
+
+msgid "No CLI tools in the catalog."
+msgstr "Keine CLI-Werkzeuge im Katalog."
+
+msgid "PLUGINS & DEPENDENCIES"
+msgstr "PLUGINS & ABHÄNGIGKEITEN"
+
+msgid "SOURCE"
+msgstr "QUELLE"
+
+msgid "CHECKSUM"
+msgstr "PRÜFSUMME"
+
+msgid "TARGET FOLDER"
+msgstr "ZIELORDNER"
+
+msgid "SIZE"
+msgstr "GRÖSSE"
+
+msgid "Loading details…"
+msgstr "Details werden geladen…"
+
+msgid "Choose the drive root"
+msgstr "Stick-Wurzel wählen"
+
+msgid "Choose your USB drive. Tools are then managed there under Tools\\."
+msgstr "Wähle das Laufwerk deines Sticks – die Tools werden dann dort unter Tools\\ verwaltet."
+
+msgid "REMOVABLE DRIVES FOUND"
+msgstr "ERKANNTE WECHSELDATENTRÄGER"
+
+msgid "No removable drive found. Use “Choose another folder…”."
+msgstr "Kein Wechseldatenträger erkannt – nutze „Anderen Ordner wählen…“."
+
+msgid "Choose another folder…"
+msgstr "Anderen Ordner wählen…"
+
+msgid "Current app folder"
+msgstr "Aktueller App-Ordner"
+
+msgid "Add to list"
+msgstr "Zu Liste hinzufügen"
+
+msgid "No lists yet. Create one on the left under My lists."
+msgstr "Noch keine Liste. Lege links unter Meine Listen eine an."
+
+msgid "+ New list…"
+msgstr "+ Neue Liste…"
+
+msgid "Done"
+msgstr "Fertig"
+
+msgid "New list"
+msgstr "Neue Liste"
+
+msgid "e.g. Pentest, Data recovery, Everyday…"
+msgstr "z. B. Pentest, Datenrettung, Alltag…"
+
+msgid "Create"
+msgstr "Anlegen"
+
+msgid "Open source under the MIT license. The “Maxtrix” name and logo are excluded. Licenses of the bundled software (7-Zip, Slint, fonts) are in THIRD-PARTY-NOTICES.txt next to the EXE."
+msgstr "Open Source unter der MIT-Lizenz. Name und Logo „Maxtrix“ sind davon ausgenommen. Lizenzen der mitgelieferten Software (7-Zip, Slint, Schriften) stehen in THIRD-PARTY-NOTICES.txt neben der EXE."
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Keep Maxtrix running in the background?"
+msgstr "Maxtrix im Hintergrund weiterlaufen lassen?"
+
+msgid "Maxtrix stays ready in the notification area (bottom right, next to the clock). A click on its icon opens the quick start. Right-click the icon and choose “Quit” to exit at any time. You can also change this choice there."
+msgstr "Im Infobereich (unten rechts, neben der Uhr) bleibt Maxtrix startbereit – ein Klick aufs Symbol öffnet den Schnellstart. Beenden jederzeit per Rechtsklick aufs Symbol → „Beenden“. Dort lässt sich die Wahl auch wieder ändern."
+
+msgid "Quit"
+msgstr "Beenden"
+
+msgid "Keep running in background"
+msgstr "Im Hintergrund weiterlaufen"
+
+msgid "Drag onto a list on the left"
+msgstr "Auf eine Liste links ziehen"
+
+msgid "+ create a new list"
+msgstr "+ neue Liste anlegen"
+
+msgid "Maxtrix — Quick start"
+msgstr "Maxtrix — Schnellstart"
+
+msgid "No tools installed yet."
+msgstr "Noch keine Tools installiert."
+
+msgid "{} goes straight in."
+msgstr "{} kommt direkt hinein."
+

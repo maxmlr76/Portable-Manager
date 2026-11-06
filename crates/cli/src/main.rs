@@ -43,14 +43,14 @@ fn cli_events(ev: InstallEvent) {
 }
 
 fn print_profile(profile: &LaunchProfile) {
-    println!("Start        {}", profile.run.as_deref().unwrap_or("(kein bin)"));
+    println!("Start        {}", profile.run.as_deref().unwrap_or("(no bin)"));
     if let Some(a) = &profile.args {
-        println!("Argumente    {a}");
+        println!("Arguments    {a}");
     }
     if profile.env.is_empty() && profile.path_prepend.is_empty() {
-        println!("Umgebung     (keine)");
+        println!("Environment  (none)");
     } else {
-        println!("Umgebung:");
+        println!("Environment:");
         for (k, v) in &profile.env {
             println!("  {k} = {v}");
         }
@@ -67,7 +67,7 @@ fn resolve_plugins(main: &Manifest, root: &Path) -> Vec<(Manifest, PathBuf)> {
         let (_, pname) = resolver::parse_ref(&need.reference);
         match catalog::fetch_ref(&need.reference) {
             Ok(pm) => plugins.push((pm, catalog::install_dir(root, catalog::RUNTIME_CAT, &pname))),
-            Err(e) => println!("Plugin {} übersprungen: {e}", need.reference),
+            Err(e) => println!("Plugin {} skipped: {e}", need.reference),
         }
     }
     plugins
@@ -77,10 +77,10 @@ fn cmd_manifest(name: &str) -> Result<()> {
     let (m, entry) = catalog::fetch_named(name)?;
     println!("Name        {}", m.name);
     println!("Version     {}", m.version);
-    println!("Kategorie   {}", entry.category);
-    println!("Beschreibung {}", m.description);
+    println!("Category    {}", entry.category);
+    println!("Description {}", m.description);
     println!("URL         {}", m.url);
-    println!("Datei       {}  (.{})", m.filename, m.ext);
+    println!("File        {}  (.{})", m.filename, m.ext);
     println!("Hash        {}:{}", m.hash_alg, m.hash_hex);
     if let Some(ed) = &m.extract_dir {
         println!("extract_dir {ed}");
@@ -102,17 +102,17 @@ fn cmd_plan(name: &str, root: &str) -> Result<()> {
     let root = Path::new(root);
     let plugins = resolve_plugins(&main, root);
 
-    println!("Plan für {name} v{}:", main.version);
+    println!("Plan for {name} v{}:", main.version);
     for (pm, pdir) in &plugins {
         println!("  Plugin       {} v{}  ->  {}", pm.name, pm.version, pdir.display());
     }
     let main_dir = catalog::install_dir(root, entry.category, name);
-    println!("  Haupt-Tool   {} v{}  ->  {}", main.name, main.version, main_dir.display());
+    println!("  Main tool    {} v{}  ->  {}", main.name, main.version, main_dir.display());
 
-    println!("\nAbgeleitete Startumgebung (stick-relativ):");
+    println!("\nDerived launch environment (drive-relative):");
     let profile = resolver::build_launch_profile(&main, &main_dir, &plugins, root, catalog::overlay(name).run, catalog::overlay(name).args);
     print_profile(&profile);
-    println!("\n(Nur Auflösung – es wurde nichts heruntergeladen.)");
+    println!("\n(Resolve only, nothing was downloaded.)");
     Ok(())
 }
 
@@ -126,17 +126,17 @@ fn cmd_profile(name: &str, root: &str) -> Result<()> {
     std::fs::create_dir_all(&main_dir)?;
     let path = main_dir.join(".maxtrix-launch.json");
     std::fs::write(&path, serde_json::to_vec_pretty(&profile.to_json())?)?;
-    println!("Launch-Profil geschrieben: {}\n", path.display());
+    println!("Launch profile written: {}\n", path.display());
     print_profile(&profile);
     Ok(())
 }
 
 fn cmd_launch(name: &str, root: &str, as_root: Option<&str>) -> Result<()> {
-    let entry = catalog::find(name).ok_or_else(|| anyhow!("'{name}' nicht im Katalog"))?;
+    let entry = catalog::find(name).ok_or_else(|| anyhow!("'{name}' is not in the catalog"))?;
     let profile_path =
         catalog::install_dir(Path::new(root), entry.category, name).join(".maxtrix-launch.json");
     let text = std::fs::read_to_string(&profile_path)
-        .with_context(|| format!("kein Launch-Profil gefunden: {}", profile_path.display()))?;
+        .with_context(|| format!("no launch profile found: {}", profile_path.display()))?;
     let json: serde_json::Value = serde_json::from_str(&text)?;
 
     let mount_raw = match as_root {
@@ -145,12 +145,12 @@ fn cmd_launch(name: &str, root: &str, as_root: Option<&str>) -> Result<()> {
     };
     let mount = mount_raw.trim_end_matches(['\\', '/']).to_string();
 
-    println!("Stick-Wurzel : {mount}");
-    println!("Start        : {}", json["run"].as_str().unwrap_or("(kein bin)"));
+    println!("Drive root   : {mount}");
+    println!("Start        : {}", json["run"].as_str().unwrap_or("(no bin)"));
     if let Some(a) = json["args"].as_str() {
-        println!("Argumente    : {}", resolver::resolve_stick(a, &mount));
+        println!("Arguments    : {}", resolver::resolve_stick(a, &mount));
     }
-    println!("Aufgelöste Umgebung:");
+    println!("Resolved environment:");
     if let Some(env) = json["env"].as_object() {
         for (k, v) in env {
             if let Some(s) = v.as_str() {
@@ -172,14 +172,14 @@ fn cmd_install(name: &str, root: &str) -> Result<()> {
     let summary = catalog::install_curated(name, Path::new(root), &cli_events, &NO_CANCEL)?;
     let r = &summary.report;
 
-    println!("\n── Ergebnis ─────────────────────────────");
+    println!("\n── Result ──────────────────────────────");
     println!("{} v{}", r.name, r.version);
-    println!("verifiziert : {} ({})", r.verified, r.hash_alg);
+    println!("verified    : {} ({})", r.verified, r.hash_alg);
     println!("Format      : {}", r.archive_kind);
-    println!("Zielordner  : {}", r.target.display());
+    println!("Target      : {}", r.target.display());
     match &r.pending_reason {
         Some(reason) => println!("Status      : Download+Hash OK — {reason}"),
-        None => println!("Status      : installiert, {} Dateien", r.files),
+        None => println!("Status      : installed, {} files", r.files),
     }
     if !summary.plugins.is_empty() {
         println!("Plugins     : {}", summary.plugins.join(", "));
@@ -199,11 +199,11 @@ fn cmd_audit(test_install: bool, keep_root: Option<String>) -> Result<()> {
         .unwrap_or_else(|| std::env::temp_dir().join(format!("maxtrix-audit-{}", std::process::id())));
     if test_install {
         std::fs::create_dir_all(&scratch)?;
-        println!("Test-Installationen nach {}\n", scratch.display());
+        println!("Test installs to {}\n", scratch.display());
     }
     let quiet = |_: InstallEvent| {};
     let (mut fails, mut warns) = (0usize, 0usize);
-    println!("{:18} {:6} {:30} {:6} Hinweise", "Tool", "Typ", "Startziel", "Urteil");
+    println!("{:18} {:6} {:30} {:6} Notes", "Tool", "Type", "Start target", "Verdict");
     println!("{}", "-".repeat(100));
     for entry in catalog::curated() {
         let (verdict, kind, target, notes) = match catalog::fetch_named(entry.name) {
@@ -217,10 +217,10 @@ fn cmd_audit(test_install: bool, keep_root: Option<String>) -> Result<()> {
                     && target.as_deref().map(|t| !t.eq_ignore_ascii_case(&m.filename)).unwrap_or(true);
                 if exe_is_installer || m.innosetup {
                     verdict = "FAIL";
-                    notes.push("braucht ein Setup-Programm".to_string());
+                    notes.push("needs a setup program".to_string());
                 } else if m.needs_installer {
                     verdict = "WARN";
-                    notes.push("Installer-Skript wird übersprungen".to_string());
+                    notes.push("installer script is skipped".to_string());
                 }
                 if m.artifacts.len() > 1 {
                     notes.push(format!("{} Downloads", m.artifacts.len()));
@@ -259,9 +259,9 @@ fn cmd_audit(test_install: bool, keep_root: Option<String>) -> Result<()> {
         let _ = std::fs::remove_dir_all(&scratch);
     }
     let total = catalog::curated().len();
-    println!("\n{total} Tools: {} ok, {warns} Warnungen, {fails} Fehler", total - warns - fails);
+    println!("\n{total} Tools: {} ok, {warns} warnings, {fails} errors", total - warns - fails);
     if fails > 0 {
-        Err(anyhow!("{fails} Tool(s) nicht portabel installierbar"))
+        Err(anyhow!("{fails} tool(s) cannot be installed portably"))
     } else {
         Ok(())
     }
@@ -283,17 +283,17 @@ fn cmd_selftest() -> Result<()> {
         println!("[{}] {} = {}", if pass { "OK" } else { "FAIL" }, alg, got);
     }
     if ok {
-        println!("\nSelftest bestanden — Hash-Schicht korrekt.");
+        println!("\nSelftest passed: hash layer is correct.");
         Ok(())
     } else {
-        Err(anyhow!("Selftest fehlgeschlagen"))
+        Err(anyhow!("Selftest failed"))
     }
 }
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let cmd = args.first().map(String::as_str).unwrap_or("help");
-    let name = || args.get(1).cloned().ok_or_else(|| anyhow!("Name fehlt"));
+    let name = || args.get(1).cloned().ok_or_else(|| anyhow!("name is missing"));
     let root = || flag(&args, "--root").unwrap_or_else(default_root);
 
     match cmd {
@@ -302,7 +302,7 @@ fn main() -> Result<()> {
         "which7z" => {
             match maxtrix_engine::sevenzip::find_7z() {
                 Some(p) => println!("7-Zip: {}", p.display()),
-                None => println!("kein 7-Zip gefunden"),
+                None => println!("7-Zip not found"),
             }
             Ok(())
         }
@@ -313,7 +313,7 @@ fn main() -> Result<()> {
         "search" => {
             let q = name()?;
             let hits = maxtrix_engine::search::search(&q, 15)?;
-            println!("{} Treffer (Top {}):", hits.len(), hits.len());
+            println!("{} hits (top {}):", hits.len(), hits.len());
             for h in &hits {
                 println!(
                     "  {:24} v{:16} {:>6}★  {:<10} {}",
@@ -326,13 +326,13 @@ fn main() -> Result<()> {
         }
         "installrepo" => {
             let n = name()?;
-            let repo = flag(&args, "--repo").ok_or_else(|| anyhow!("--repo fehlt"))?;
-            let file = flag(&args, "--file").ok_or_else(|| anyhow!("--file fehlt"))?;
+            let repo = flag(&args, "--repo").ok_or_else(|| anyhow!("--repo is missing"))?;
+            let file = flag(&args, "--file").ok_or_else(|| anyhow!("--file is missing"))?;
             let cat = flag(&args, "--cat").unwrap_or_else(|| "Weitere".to_string());
             let summary =
                 catalog::install_from_repo(&n, &repo, &file, &cat, Path::new(&root()), &cli_events, &NO_CANCEL)?;
             let r = &summary.report;
-            println!("\n{} v{} → {} ({} Dateien)", r.name, r.version, r.target.display(), r.files);
+            println!("\n{} v{} → {} ({} files)", r.name, r.version, r.target.display(), r.files);
             Ok(())
         }
         "term" => {
@@ -340,12 +340,12 @@ fn main() -> Result<()> {
             let r = root();
             let cat = category_for(&r, &n)?;
             maxtrix_engine::cli::open_tool_terminal(Path::new(&r), &cat, &n)?;
-            println!("Terminal geöffnet: {n}");
+            println!("Terminal opened: {n}");
             Ok(())
         }
         "console" => {
             maxtrix_engine::cli::open_console(Path::new(&root()))?;
-            println!("IT-Konsole geöffnet");
+            println!("IT console opened");
             Ok(())
         }
         "install" => cmd_install(&name()?, &root()),
@@ -353,7 +353,7 @@ fn main() -> Result<()> {
             let r = root();
             let list = catalog::scan_installed(Path::new(&r));
             if list.is_empty() {
-                println!("Keine installierten Tools unter {r}\\Tools");
+                println!("No installed tools under {r}\\Tools");
             }
             for t in &list {
                 let ver = if t.version.is_empty() { "?" } else { t.version.as_str() };
@@ -371,7 +371,7 @@ fn main() -> Result<()> {
             let r = root();
             let cat = category_for(&r, &n)?;
             catalog::launch_tool(Path::new(&r), &cat, &n)?;
-            println!("Gestartet: {n}");
+            println!("Started: {n}");
             Ok(())
         }
         "remove" => {
@@ -379,21 +379,21 @@ fn main() -> Result<()> {
             let r = root();
             let cat = category_for(&r, &n)?;
             catalog::remove_tool(Path::new(&r), &cat, &n)?;
-            println!("Entfernt: {n}");
+            println!("Removed: {n}");
             Ok(())
         }
         _ => {
             println!("maxtrix — Portable-Tool-Engine (PoC)\n");
-            println!("  maxtrix selftest              Hash-Schicht offline prüfen");
-            println!("  maxtrix audit [--install]     Katalog prüfen: portabel installierbar? [--keep <dir>]");
-            println!("  maxtrix which7z               gefundenes 7-Zip anzeigen");
-            println!("  maxtrix manifest <name>       Manifest abrufen und anzeigen");
-            println!("  maxtrix plan     <name>       Abhängigkeiten/Plugins + Startumgebung auflösen");
-            println!("  maxtrix install  <name>       herunterladen + verifizieren + entpacken (inkl. Plugins)");
-            println!("  maxtrix profile  <name>       Launch-Profil neu ableiten (ohne Download)");
-            println!("  maxtrix launch   <name>       Launch-Profil gegen Laufwerk auflösen [--as <root>]");
-            println!("  maxtrix term     <name>       Terminal mit dem Tool im PATH öffnen");
-            println!("  maxtrix console               IT-Konsole: alle CLI-Tools gleichzeitig im PATH");
+            println!("  maxtrix selftest              check the hash layer offline");
+            println!("  maxtrix audit [--install]     check the catalog: portably installable? [--keep <dir>]");
+            println!("  maxtrix which7z               show the 7-Zip found");
+            println!("  maxtrix manifest <name>       fetch and show a manifest");
+            println!("  maxtrix plan     <name>       resolve dependencies/plugins + launch environment");
+            println!("  maxtrix install  <name>       download + verify + unpack (incl. plugins)");
+            println!("  maxtrix profile  <name>       derive the launch profile again (no download)");
+            println!("  maxtrix launch   <name>       resolve a launch profile against a drive [--as <root>]");
+            println!("  maxtrix term     <name>       open a terminal with the tool on PATH");
+            println!("  maxtrix console               IT console: all CLI tools on PATH at once");
             println!("        [--root <dir>]");
             println!("\n  Katalog: {}", catalog::known());
             Ok(())
@@ -414,5 +414,5 @@ fn category_for(root: &str, name: &str) -> Result<String> {
         .into_iter()
         .find(|t| t.name.eq_ignore_ascii_case(name))
         .map(|t| t.category)
-        .ok_or_else(|| anyhow!("'{name}' weder im Katalog noch installiert gefunden"))
+        .ok_or_else(|| anyhow!("'{name}' found neither in the catalog nor installed"))
 }

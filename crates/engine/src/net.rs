@@ -59,7 +59,7 @@ pub fn fetch_text(url: &str) -> Result<String> {
         .call()
         .with_context(|| format!("Abruf fehlgeschlagen: {url}"))?
         .into_string()
-        .context("Antwort ist kein gültiger Text")
+        .context(crate::tr!("response is not valid text", "Antwort ist kein gültiger Text"))
 }
 
 /// Stream `url` into the file `dest`, hashing on the fly — nothing is held in RAM,
@@ -94,7 +94,7 @@ pub fn download_to_file(
 
     let mut reader = resp.into_reader();
     let file = File::create(dest)
-        .with_context(|| format!("Zwischenspeicher nicht anlegbar: {}", dest.display()))?;
+        .with_context(|| crate::tr!("cannot create the temporary file: {}", "Zwischenspeicher nicht anlegbar: {}", dest.display()))?;
     let mut out = BufWriter::with_capacity(1 << 20, file);
     let mut chunk = vec![0u8; 256 * 1024];
     let mut done: u64 = 0;
@@ -104,20 +104,20 @@ pub fn download_to_file(
         }
         let n = reader
             .read(&mut chunk)
-            .context("Fehler beim Lesen des Download-Streams")?;
+            .context(crate::tr!("error reading the download stream", "Fehler beim Lesen des Download-Streams"))?;
         if n == 0 {
             break;
         }
         hasher.update(&chunk[..n]);
         out.write_all(&chunk[..n])
-            .context("Download konnte nicht gespeichert werden (Datenträger voll?)")?;
+            .context(crate::tr!("could not save the download (disk full?)", "Download konnte nicht gespeichert werden (Datenträger voll?)"))?;
         done += n as u64;
         on_progress(done, total);
     }
     out.flush()?;
     if let Some(t) = total {
         if done < t {
-            bail!("Download unvollständig ({done} von {t} Bytes)");
+            bail!(crate::tr!("download incomplete ({done} of {t} bytes)", "Download unvollständig ({done} von {t} Bytes)"));
         }
     }
     Ok((done, hasher.finish_hex()))
@@ -129,14 +129,14 @@ fn download_error(e: ureq::Error, url: &str) -> anyhow::Error {
     match e {
         ureq::Error::Status(code, _) => {
             let why = match code {
-                404 | 410 => ", Datei beim Hersteller nicht mehr vorhanden – Paketquelle veraltet",
-                403 => ", Server verweigert den Download",
-                500..=599 => ", Server-Störung – später erneut versuchen",
-                _ => "",
+                404 | 410 => crate::tr!(", file no longer available from the publisher, package source is outdated", ", Datei beim Hersteller nicht mehr vorhanden – Paketquelle veraltet"),
+                403 => crate::tr!(", the server refused the download", ", Server verweigert den Download"),
+                500..=599 => crate::tr!(", server problem, try again later", ", Server-Störung – später erneut versuchen"),
+                _ => String::new(),
             };
-            anyhow!("Download fehlgeschlagen (HTTP {code}{why}): {url}")
+            anyhow!(crate::tr!("download failed (HTTP {code}{why}): {url}", "Download fehlgeschlagen (HTTP {code}{why}): {url}"))
         }
-        other => anyhow::Error::new(other).context(format!("Download fehlgeschlagen (keine Verbindung?): {url}")),
+        other => anyhow::Error::new(other).context(crate::tr!("download failed (no connection?): {url}", "Download fehlgeschlagen (keine Verbindung?): {url}")),
     }
 }
 

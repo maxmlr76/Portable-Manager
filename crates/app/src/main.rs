@@ -6,6 +6,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use maxtrix_engine::tr;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -226,12 +227,12 @@ fn meta_line(t: &ToolState) -> String {
     match t.status.as_str() {
         "installed" | "update" | "broken" => t
             .disk
-            .map(|b| format!("{} auf dem Stick", maxtrix_engine::human(b)))
+            .map(|b| tr!("{} on the drive", "{} auf dem Stick", maxtrix_engine::human(b)))
             .unwrap_or_default(),
         "available" | "error" => match (t.dl_size, t.host.is_empty()) {
             (Some(b), false) => format!("Download {} · {}", maxtrix_engine::human(b), t.host),
             (Some(b), true) => format!("Download {}", maxtrix_engine::human(b)),
-            (None, false) => format!("von {}", t.host),
+            (None, false) => tr!("from {}", "von {}", t.host),
             (None, true) => String::new(),
         },
         _ => String::new(),
@@ -252,7 +253,7 @@ fn to_item_kind(t: &ToolState, kind: &str) -> ToolItem {
         cli: t.cli,
         version: t.version.clone().into(),
         summary: t.summary.clone().into(),
-        category: t.category.clone().into(),
+        category: catalog::category_label(&t.category).into(),
         status: t.status.clone().into(),
         progress: t.progress,
         detail: t.detail.clone().into(),
@@ -274,7 +275,7 @@ fn header_item(cat: &str, count: usize) -> ToolItem {
     ToolItem {
         id: -1,
         kind: "header".into(),
-        name: cat.into(),
+        name: catalog::category_label(cat).into(),
         glyph: category_icon(cat).into(),
         count: count as i32,
         ..Default::default()
@@ -317,6 +318,7 @@ fn chip_rows(tools: &[&ToolState], active: &str) -> Vec<ChipRow> {
         }
     }
     let mut chips = vec![CatItem {
+        label: "".into(),
         name: "".into(),
         icon: "grid".into(),
         count: tools.len() as i32,
@@ -324,11 +326,11 @@ fn chip_rows(tools: &[&ToolState], active: &str) -> Vec<ChipRow> {
     }];
     for (c, n) in cats {
         let icon = category_icon(&c);
-        chips.push(CatItem { active: c == active, name: c.into(), icon: icon.into(), count: n as i32 });
+        chips.push(CatItem { active: c == active, label: catalog::category_label(&c).into(), name: c.into(), icon: icon.into(), count: n as i32 });
     }
     // Rough chip width: padding + icon + label + count (12 px Saira ≈ 6.8 px/char).
     let line_width = CHIP_LINE.with(|c| c.get());
-    let width = |c: &CatItem| 50.0 + c.name.chars().count().max(4) as f32 * 6.8 + c.count.to_string().len() as f32 * 7.0;
+    let width = |c: &CatItem| 50.0 + c.label.chars().count().max(4) as f32 * 6.8 + c.count.to_string().len() as f32 * 7.0;
     let mut rows = Vec::new();
     let mut line: Vec<CatItem> = Vec::new();
     let mut used = 0.0;
@@ -377,15 +379,15 @@ fn plain_item(kind: &str, name: &str, star: bool) -> ToolItem {
 fn view_titles(view: &str, n: usize, updates: usize) -> (String, String) {
     match view {
         "discover" => (
-            "Entdecken".into(),
-            if n == 1 { "1 kuratiertes Werkzeug · Quelle Scoop · Hash-geprüft".into() } else { format!("{n} kuratierte Werkzeuge · Quelle Scoop · Hash-geprüft") },
+            tr!("Discover", "Entdecken"),
+            if n == 1 { tr!("1 curated tool · Source: Scoop · Hash-verified", "1 kuratiertes Werkzeug · Quelle Scoop · Hash-geprüft") } else { tr!("{n} curated tools · Source: Scoop · Hash-verified", "{n} kuratierte Werkzeuge · Quelle Scoop · Hash-geprüft") },
         ),
-        "installed" => ("Installiert".into(), format!("{n} auf dem Stick")),
+        "installed" => (tr!("Installed", "Installiert"), tr!("{n} on the drive", "{n} auf dem Stick")),
         "updates" => (
             "Updates".into(),
-            if updates == 0 { "Alles aktuell".into() } else { format!("{updates} verfügbar") },
+            if updates == 0 { tr!("All up to date", "Alles aktuell") } else { tr!("{updates} available", "{updates} verfügbar") },
         ),
-        cat => (cat.to_string(), if n == 1 { "1 Werkzeug".into() } else { format!("{n} Werkzeuge") }),
+        cat => (catalog::category_label(cat), if n == 1 { tr!("1 tool", "1 Werkzeug") } else { tr!("{n} tools", "{n} Werkzeuge") }),
     }
 }
 
@@ -412,12 +414,12 @@ fn refresh() {
             let has_more = shown < filtered || more_on_server;
             if let Some(ui) = ctx.ui.upgrade() {
                 let sub = if st.search.trim().chars().count() < 2 {
-                    "Tippe mindestens 2 Zeichen, um im ganzen Scoop-Katalog zu suchen.".to_string()
+                    tr!("Type at least 2 characters to search the whole Scoop catalog.", "Tippe mindestens 2 Zeichen, um im ganzen Scoop-Katalog zu suchen.")
                 } else {
-                    let src = if st.verified_only { "verifiziert" } else { "alle Quellen" };
-                    format!("{shown} von {filtered}{} · {src}", if more_on_server { "+" } else { "" })
+                    let src = if st.verified_only { tr!("verified", "verifiziert") } else { tr!("all sources", "alle Quellen") };
+                    tr!("{shown} of {filtered}{} · {src}", "{shown} von {filtered}{} · {src}", if more_on_server { "+" } else { "" })
                 };
-                ui.set_view_title("Alle durchsuchen".into());
+                ui.set_view_title(tr!("Search all", "Alle durchsuchen").into());
                 ui.set_view_subtitle(sub.into());
                 ui.set_current_view("search".into());
                 ui.set_verified_only(st.verified_only);
@@ -435,8 +437,8 @@ fn refresh() {
         if st.view == "cli" {
             let items = build_cli_items(&st.root);
             if let Some(ui) = ctx.ui.upgrade() {
-                ui.set_view_title("CLI-Werkzeuge".into());
-                ui.set_view_subtitle("Terminal im Tool-Ordner · Tool im PATH · JAVA_HOME etc. gesetzt".into());
+                ui.set_view_title(tr!("CLI tools", "CLI-Werkzeuge").into());
+                ui.set_view_subtitle(tr!("Terminal in the tool folder · Tool on PATH · JAVA_HOME etc. set", "Terminal im Tool-Ordner · Tool im PATH · JAVA_HOME etc. gesetzt").into());
                 ui.set_current_view("cli".into());
                 ui.set_update_count(updates as i32);
                 ui.set_cli_tools(ModelRc::from(Rc::new(VecModel::from(items))));
@@ -459,7 +461,7 @@ fn refresh() {
                 rows.push(header_item(&cat, in_cat.len()));
                 rows.extend(in_cat.iter().map(|t| to_item(t)));
             } else if let Some((first, rest)) = curated.split_first() {
-                rows.push(plain_item("header", "Empfohlen", true));
+                rows.push(plain_item("header", &tr!("Recommended", "Empfohlen"), true));
                 rows.push(to_item_kind(first, "feature"));
                 // Group the rest under a section header per category (order = first
                 // appearance in the catalog).
@@ -482,8 +484,8 @@ fn refresh() {
                     view_titles("discover", curated.len(), updates)
                 } else {
                     let n = rows.len() - 1;
-                    let what = if n == 1 { "1 Werkzeug".to_string() } else { format!("{n} Werkzeuge") };
-                    ("Entdecken".into(), format!("{what} in {cat} · Quelle Scoop · Hash-geprüft"))
+                    let what = if n == 1 { tr!("1 tool", "1 Werkzeug") } else { tr!("{n} tools", "{n} Werkzeuge") };
+                    (tr!("Discover", "Entdecken"), { let cat = catalog::category_label(&cat); tr!("{what} in {cat} · Source: Scoop · Hash-verified", "{what} in {cat} · Quelle Scoop · Hash-geprüft") })
                 };
                 ui.set_view_title(title.into());
                 ui.set_view_subtitle(sub.into());
@@ -513,9 +515,9 @@ fn refresh() {
                 let n = rows.len();
                 ui.set_view_title(st.current_list.clone().into());
                 ui.set_view_subtitle(if n == 0 {
-                    "Noch keine Tools – über das Listen-Symbol auf einer Kachel hinzufügen.".into()
+                    tr!("No tools yet. Add them with the list icon on a card.", "Noch keine Tools – über das Listen-Symbol auf einer Kachel hinzufügen.").into()
                 } else {
-                    if n == 1 { "1 Tool in dieser Liste".into() } else { format!("{n} Tools in dieser Liste").into() }
+                    if n == 1 { tr!("1 tool in this list", "1 Tool in dieser Liste").into() } else { tr!("{n} tools in this list", "{n} Tools in dieser Liste").into() }
                 });
                 ui.set_update_count(updates as i32);
                 ui.set_current_view("list".into());
@@ -543,7 +545,7 @@ fn refresh() {
                 continue;
             }
             if !search.is_empty() {
-                let hay = format!("{} {} {} {}", t.name, t.title, t.summary, t.category).to_lowercase();
+                let hay = format!("{} {} {} {} {}", t.name, t.title, t.summary, t.category, catalog::category_label(&t.category)).to_lowercase();
                 if !hay.contains(&search) {
                     continue;
                 }
@@ -642,7 +644,7 @@ fn do_install(id: usize) {
     update_tool(id, |t| {
         t.from_status = std::mem::replace(&mut t.status, "installing".into());
         t.progress = 0.03;
-        t.detail = "Vorbereiten…".into();
+        t.detail = tr!("Preparing…", "Vorbereiten…");
     });
 
     std::thread::spawn(move || {
@@ -667,7 +669,7 @@ fn do_install(id: usize) {
                             post(id, Box::new(move |s| {
                                 s.status = "installing".into();
                                 s.progress = 0.05 + frac * 0.80;
-                                s.detail = format!("Lädt {pct}%");
+                                s.detail = tr!("Downloading {pct}%", "Lädt {pct}%");
                             }));
                         }
                     }
@@ -679,7 +681,7 @@ fn do_install(id: usize) {
                             post(id, Box::new(move |s| {
                                 s.status = "installing".into();
                                 s.progress = 0.30;
-                                s.detail = format!("Lädt {mb} MB");
+                                s.detail = tr!("Downloading {mb} MB", "Lädt {mb} MB");
                             }));
                         }
                     }
@@ -687,14 +689,14 @@ fn do_install(id: usize) {
             }
             InstallEvent::Phase(msg) => {
                 let m = msg.trim().to_string();
-                let (p, d): (f32, Option<String>) = if m.contains("Prüfe") {
-                    (0.87, Some("Prüfe Prüfsumme…".into()))
-                } else if m.contains("verifiziert") {
-                    (0.89, Some("Prüfsumme ok".into()))
-                } else if m.starts_with("Entpacke") {
-                    (0.91, Some("Entpacke…".into()))
-                } else if m.contains("Benutzerdaten") {
-                    (0.97, Some("Übernehme Einstellungen…".into()))
+                let (p, d): (f32, Option<String>) = if m.contains(&*tr!("Checking", "Prüfe")) {
+                    (0.87, Some(tr!("Checking checksum…", "Prüfe Prüfsumme…")))
+                } else if m.contains(&*tr!("verified", "verifiziert")) {
+                    (0.89, Some(tr!("Checksum ok", "Prüfsumme ok")))
+                } else if m.starts_with(&*tr!("Unpacking", "Entpacke")) {
+                    (0.91, Some(tr!("Unpacking…", "Entpacke…")))
+                } else if m.contains(&*tr!("user data", "Benutzerdaten")) {
+                    (0.97, Some(tr!("Carrying over settings…", "Übernehme Einstellungen…")))
                 } else if m.starts_with("Plugin") {
                     (0.05, Some(m.clone()))
                 } else {
@@ -749,16 +751,16 @@ fn do_install(id: usize) {
                     } else {
                         format!(" · + {}", summary.plugins.join(", "))
                     };
-                    let files_txt = if files == 1 { "1 Datei".to_string() } else { format!("{files} Dateien") };
+                    let files_txt = if files == 1 { tr!("1 file", "1 Datei") } else { tr!("{files} files", "{files} Dateien") };
                     let detail = format!("{files_txt}{extra}"); // "installiert" zeigt die Status-Pille
                     let ver_s = ver.clone();
                     let cat_s = install_cat.clone();
                     let disk = catalog::dir_size(&r.target);
                     let cli = catalog::is_console_tool(&root, &install_cat, &name);
                     let done_msg = if prev_status == "update" {
-                        format!("{} auf v{ver} aktualisiert", catalog::display_name(&name))
+                        tr!("{} updated to v{ver}", "{} auf v{ver} aktualisiert", catalog::display_name(&name))
                     } else {
-                        format!("{} installiert", catalog::display_name(&name))
+                        tr!("{} installed", "{} installiert", catalog::display_name(&name))
                     };
                     let _ = ui_weak2.upgrade_in_event_loop(move |_| show_toast(done_msg, "ok"));
                     let name_v = name.clone();
@@ -791,7 +793,7 @@ fn do_install(id: usize) {
                 // Nothing was changed on disk — the card goes back to how it was.
                 let restore_detail = if unchanged == prev_status { prev_detail } else { String::new() };
                 let installed = unchanged != "available";
-                let msg = if installed { "Update abgebrochen – nichts verändert" } else { "Installation abgebrochen" };
+                let msg = if installed { tr!("Update cancelled, nothing changed", "Update abgebrochen – nichts verändert") } else { tr!("Installation cancelled", "Installation abgebrochen") };
                 let _ = ui_weak2.upgrade_in_event_loop(move |_| show_toast(msg, "info"));
                 post(id, Box::new(move |s| {
                     s.status = unchanged;
@@ -803,11 +805,11 @@ fn do_install(id: usize) {
                 let err = short_err(&e.to_string());
                 // A failed update leaves the old version in place: keep it startable.
                 let (status, detail) = match unchanged.as_str() {
-                    "update" => ("update".to_string(), format!("Update fehlgeschlagen: {err}")),
-                    "broken" => ("broken".to_string(), format!("Fehler: {err}")),
-                    _ => ("error".to_string(), format!("Fehler: {err}")),
+                    "update" => ("update".to_string(), tr!("Update failed: {err}", "Update fehlgeschlagen: {err}")),
+                    "broken" => ("broken".to_string(), tr!("Error: {err}", "Fehler: {err}")),
+                    _ => ("error".to_string(), tr!("Error: {err}", "Fehler: {err}")),
                 };
-                let msg = format!("{}: {}", catalog::display_name(&name), if status == "update" { "Update fehlgeschlagen" } else { "Installation fehlgeschlagen" });
+                let msg = format!("{}: {}", catalog::display_name(&name), if status == "update" { tr!("Update failed", "Update fehlgeschlagen") } else { tr!("Installation failed", "Installation fehlgeschlagen") });
                 let _ = ui_weak2.upgrade_in_event_loop(move |_| show_toast(msg, "error"));
                 post(id, Box::new(move |s| {
                     s.status = status;
@@ -825,7 +827,7 @@ fn cancel_install(id: usize) {
     let flag = CANCELS.with(|c| c.borrow().get(&id).cloned());
     if let Some(flag) = flag {
         flag.store(true, Ordering::Relaxed);
-        update_tool(id, |t| t.detail = "Wird abgebrochen…".into());
+        update_tool(id, |t| t.detail = tr!("Cancelling…", "Wird abgebrochen…"));
     }
 }
 
@@ -834,8 +836,8 @@ fn do_launch(id: usize) {
     let root = with_ctx(|ctx| ctx.state.borrow().root.clone()).unwrap_or_default();
     if let Err(e) = catalog::launch_tool(&root, &folder_cat(&t), &t.name) {
         let err = short_err(&e.to_string());
-        show_toast(format!("{} startet nicht: {err}", title_of(&t)), "error");
-        update_tool(id, |t| t.detail = format!("Start-Fehler: {err}"));
+        show_toast(tr!("{} does not start: {err}", "{} startet nicht: {err}", title_of(&t)), "error");
+        update_tool(id, |t| t.detail = tr!("Launch error: {err}", "Start-Fehler: {err}"));
     }
 }
 
@@ -876,12 +878,14 @@ fn request_remove(id: usize) {
     let folder = format!("Tools\\{}\\{}", folder_cat(&t), t.name);
     ask_confirm(
         Pending::RemoveTool(id),
-        format!("{} entfernen?", title_of(&t)),
-        format!(
+        tr!("Remove {}?", "{} entfernen?", title_of(&t)),
+        tr!(
+            "The folder {folder} is deleted from the drive, including all settings and data \
+             the tool stored there. This cannot be undone.",
             "Der Ordner {folder} wird vom Stick gelöscht – samt allen Einstellungen und Daten, \
              die das Tool dort gespeichert hat. Das lässt sich nicht rückgängig machen."
         ),
-        "Entfernen",
+        &tr!("Remove", "Entfernen"),
     );
 }
 
@@ -907,9 +911,9 @@ fn do_remove(id: usize) {
             });
             // Drop the found-on-disk copy from the main list so "Installiert" updates.
             drop_found_tool(&name);
-            show_toast(format!("{} entfernt", title_of(&t)), "ok");
+            show_toast(tr!("{} removed", "{} entfernt", title_of(&t)), "ok");
         }
-        Err(e) => update_tool(id, |t| t.detail = format!("Entfernen fehlgeschlagen: {}", short_err(&e.to_string()))),
+        Err(e) => update_tool(id, |t| t.detail = tr!("Remove failed: {}", "Entfernen fehlgeschlagen: {}", short_err(&e.to_string()))),
     }
 }
 
@@ -937,7 +941,7 @@ fn merge_found_tool(name: &str, category: &str, version: &str) {
         let mut t = ToolState {
             id,
             name: name.to_string(),
-            summary: "über die Suche installiert".into(),
+            summary: tr!("installed via search", "über die Suche installiert"),
             title: catalog::display_name(name),
             cli: catalog::is_console_tool(&root, category, name),
             category: category.to_string(),
@@ -995,13 +999,13 @@ fn do_update_all() {
 
 /// Bar fraction + caption for the sidebar drive card.
 fn drive_cap_props(usage: Option<(u64, u64)>, n_installed: usize) -> (f32, String) {
-    let tools = if n_installed == 1 { "1 Tool".to_string() } else { format!("{n_installed} Tools") };
+    let tools = if n_installed == 1 { tr!("1 tool", "1 Tool") } else { tr!("{n_installed} tools", "{n_installed} Tools") };
     match usage {
         Some((free, total)) if total > 0 => {
             let used = total.saturating_sub(free);
             (
                 used as f32 / total as f32,
-                format!("{} frei · {tools}", maxtrix_engine::human(free)),
+                tr!("{} free · {tools}", "{} frei · {tools}", maxtrix_engine::human(free)),
             )
         }
         _ => (0.0, tools),
@@ -1056,12 +1060,12 @@ fn open_details(id: usize) {
     let install_cat = if from_repo { "Weitere".to_string() } else { t.category.clone() };
 
     let action = match t.status.as_str() {
-        "installed" if t.cli => "Terminal öffnen",
-        "installed" => "Starten",
-        "update" => "Auf neueste Version aktualisieren",
-        "broken" => "Neu installieren",
-        "installing" | "done" => "",
-        _ => "Herunterladen & Installieren",
+        "installed" if t.cli => tr!("Open terminal", "Terminal öffnen"),
+        "installed" => tr!("Launch", "Starten"),
+        "update" => tr!("Update to the latest version", "Auf neueste Version aktualisieren"),
+        "broken" => tr!("Reinstall", "Neu installieren"),
+        "installing" | "done" => String::new(),
+        _ => tr!("Download & install", "Herunterladen & Installieren"),
     };
 
     let Some(ui) = ui_weak.upgrade() else { return };
@@ -1069,7 +1073,7 @@ fn open_details(id: usize) {
     ui.set_drawer_open(true);
     ui.set_drawer_name(title_of(&t).into());
     ui.set_drawer_version(t.version.clone().into());
-    ui.set_drawer_category(t.category.clone().into());
+    ui.set_drawer_category(catalog::category_label(&t.category).into());
     ui.set_drawer_summary(t.summary.clone().into());
     ui.set_drawer_mono(t.mono.clone().into());
     ui.set_drawer_icon(t.icon.clone());
@@ -1081,7 +1085,7 @@ fn open_details(id: usize) {
     // A tool found on disk (not curated, not a search result) has no manifest.
     if !t.curated && !from_repo {
         ui.set_drawer_loading(false);
-        ui.set_drawer_source("lokal – nicht aus dem Katalog".into());
+        ui.set_drawer_source(tr!("local, not from the catalog", "lokal – nicht aus dem Katalog").into());
         ui.set_drawer_hash("—".into());
         ui.set_drawer_size("—".into());
         return;
@@ -1089,7 +1093,7 @@ fn open_details(id: usize) {
     ui.set_drawer_loading(true);
     ui.set_drawer_source("".into());
     ui.set_drawer_hash("".into());
-    ui.set_drawer_size("wird ermittelt…".into());
+    ui.set_drawer_size(tr!("checking…", "wird ermittelt…").into());
 
     std::thread::spawn(move || {
         let mut source = String::new();
@@ -1116,16 +1120,16 @@ fn open_details(id: usize) {
             for need in resolver::plugin_needs(&m) {
                 match catalog::fetch_ref(&need.reference) {
                     Ok(dep) => {
-                        deps.push(format!("{} v{} · wird automatisch mitinstalliert", dep.name, dep.version).into());
+                        deps.push(tr!("{} v{} · installed automatically", "{} v{} · wird automatisch mitinstalliert", dep.name, dep.version).into());
                         if let Some(sz) = net::head_size(&dep.url) {
                             total += sz;
                         }
                     }
-                    Err(_) => deps.push(format!("{} · automatisch", need.reference).into()),
+                    Err(_) => deps.push(tr!("{} · automatic", "{} · automatisch", need.reference).into()),
                 }
             }
         }
-        let size = if size_known { maxtrix_engine::human(total) } else { "unbekannt".into() };
+        let size = if size_known { maxtrix_engine::human(total) } else { tr!("unknown", "unbekannt") };
 
         let _ = ui_weak.upgrade_in_event_loop(move |ui| {
             if ui.get_drawer_open() && ui.get_drawer_id() == id as i32 {
@@ -1156,7 +1160,7 @@ fn build_search_state(
         label.split('/').next().unwrap_or(&label).to_string()
     };
     let provenance = if h.stars > 0 {
-        format!("  —  {}★{}", h.stars, if h.official { " · offiziell" } else { "" })
+        format!("  —  {}★{}", h.stars, if h.official { tr!(" · official", " · offiziell") } else { String::new() })
     } else {
         String::new()
     };
@@ -1226,7 +1230,7 @@ fn apply_search_filter() {
         // Stable sort keeps server order as the tie-break.
         match sort.as_str() {
             "sterne" => hits.sort_by(|a, b| b.stars.cmp(&a.stars)),
-            "name" => hits.sort_by(|a, b| a.name.to_ascii_lowercase().cmp(&b.name.to_ascii_lowercase())),
+            "name" => hits.sort_by_key(|a| a.name.to_ascii_lowercase()),
             _ => {
                 // Relevanz: float an exact/prefix name match up, else server order.
                 let rank = |h: &maxtrix_engine::search::SearchHit| {
@@ -1500,6 +1504,51 @@ fn load_cols() -> usize {
     }
 }
 
+/// German if chosen, or at first start on a German Windows; otherwise English.
+fn saved_or_system_german() -> bool {
+    match read_config()["language"].as_str() {
+        Some(l) => l == "de",
+        None => system_is_german(),
+    }
+}
+
+#[cfg(windows)]
+fn system_is_german() -> bool {
+    // Primary language id = the low 10 bits of the LANGID; 0x07 is German.
+    unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() & 0x3ff == 0x07 }
+}
+
+#[cfg(not(windows))]
+fn system_is_german() -> bool {
+    false
+}
+
+fn apply_language(ui: &MainWindow, german: bool) {
+    maxtrix_engine::i18n::set_german(german);
+    let _ = slint::select_bundled_translation(if german { "de" } else { "en" });
+    ui.set_language(if german { "de" } else { "en" }.into());
+}
+
+/// The EN/DE switch: applies at once and is remembered.
+fn set_language(lang: &str) {
+    let german = lang == "de";
+    write_config_field("language", serde_json::json!(lang));
+    with_ctx(|ctx| {
+        if let Some(ui) = ctx.ui.upgrade() {
+            apply_language(&ui, german);
+        }
+        for t in ctx.state.borrow_mut().tools.iter_mut() {
+            if t.curated {
+                if let Some(e) = catalog::find(&t.name) {
+                    t.summary = catalog::summary(e).to_string();
+                }
+            }
+        }
+    });
+    refresh();
+    refresh_drive_card();
+}
+
 fn save_cols(n: usize) {
     write_config_field("cols", serde_json::json!(n));
 }
@@ -1637,7 +1686,7 @@ fn toggle_list_open(name: String) {
 /// not installed → its details, so it can be installed from there.
 fn list_tool_clicked(id: i32) {
     if id < 0 {
-        show_toast("Nicht mehr auf dem Stick und nicht im Katalog", "info");
+        show_toast(tr!("No longer on the drive and not in the catalog", "Nicht mehr auf dem Stick und nicht im Katalog"), "info");
         return;
     }
     let id = id as usize;
@@ -1659,7 +1708,7 @@ fn remove_from_list(tool: String, list: String) {
         }
     });
     lists_changed();
-    show_toast(format!("{} aus „{list}“ entfernt", catalog::display_name(&tool)), "ok");
+    show_toast(tr!("{} removed from “{list}”", "{} aus „{list}“ entfernt", catalog::display_name(&tool)), "ok");
 }
 
 fn create_list(name: String) {
@@ -1696,13 +1745,13 @@ fn create_list(name: String) {
         lists_changed();
         match &tool {
             Some(t) => {
-                show_toast(format!("{} → „{name}“ (neue Liste)", title_of(t)), "ok");
+                show_toast(tr!("{} → “{name}” (new list)", "{} → „{name}“ (neue Liste)", title_of(t)), "ok");
                 flash_list(&name);
             }
-            None => show_toast(format!("Liste „{name}“ angelegt"), "ok"),
+            None => show_toast(tr!("List “{name}” created", "Liste „{name}“ angelegt"), "ok"),
         }
     } else {
-        show_toast(format!("Eine Liste „{name}“ gibt es schon"), "info");
+        show_toast(tr!("A list “{name}” already exists", "Eine Liste „{name}“ gibt es schon"), "info");
     }
 }
 
@@ -1722,7 +1771,7 @@ fn delete_list(name: String) {
     let Some((list, pos)) = removed else { return };
     lists_changed();
     refresh();
-    toast_with(format!("Liste „{name}“ gelöscht"), "info", "Rückgängig");
+    toast_with(tr!("List “{name}” deleted", "Liste „{name}“ gelöscht"), "info", &tr!("Undo", "Rückgängig"));
     UNDO.with(|u| *u.borrow_mut() = Some(Undo::DeletedList(list, pos)));
 }
 
@@ -1736,7 +1785,7 @@ fn toast_action() {
                 st.lists.insert(pos, list);
             });
             lists_changed();
-            show_toast(format!("Liste „{name}“ wiederhergestellt"), "ok");
+            show_toast(tr!("List “{name}” restored", "Liste „{name}“ wiederhergestellt"), "ok");
         }
         None => hide_toast(),
     }
@@ -1793,10 +1842,10 @@ fn toggle_list(tool: String, list: String) {
     lists_changed();
     match added {
         Some(true) => {
-            show_toast(format!("{} → „{list}“", catalog::display_name(&tool)), "ok");
+            show_toast(tr!("{} → “{list}”", "{} → „{list}“", catalog::display_name(&tool)), "ok");
             flash_list(&list);
         }
-        Some(false) => show_toast(format!("{} aus „{list}“ entfernt", catalog::display_name(&tool)), "ok"),
+        Some(false) => show_toast(tr!("{} removed from “{list}”", "{} aus „{list}“ entfernt", catalog::display_name(&tool)), "ok"),
         None => {}
     }
 }
@@ -1836,8 +1885,8 @@ fn drop_on_list(tool: String, list: String) {
     .flatten();
     lists_changed();
     match added {
-        Some(true) => show_toast(format!("{} → „{list}“", catalog::display_name(&tool)), "ok"),
-        Some(false) => show_toast(format!("{} ist schon in „{list}“", catalog::display_name(&tool)), "info"),
+        Some(true) => show_toast(tr!("{} → “{list}”", "{} → „{list}“", catalog::display_name(&tool)), "ok"),
+        Some(false) => show_toast(tr!("{} is already in “{list}”", "{} ist schon in „{list}“", catalog::display_name(&tool)), "info"),
         None => return,
     }
     flash_list(&list);
@@ -1958,7 +2007,7 @@ fn build_tools(root: &std::path::Path) -> Vec<ToolState> {
                 id,
                 name: e.name.into(),
                 title: e.title.into(),
-                summary: e.summary.into(),
+                summary: catalog::summary(e).into(),
                 category: e.category.into(),
                 version: installed.clone().unwrap_or_default(),
                 status: if installed.is_some() { "installed".into() } else { "available".into() },
@@ -1982,7 +2031,7 @@ fn build_tools(root: &std::path::Path) -> Vec<ToolState> {
             id: tools.len(),
             name: it.name.clone(),
             title: it.name.clone(),
-            summary: "auf dem Stick gefunden".into(),
+            summary: tr!("found on the drive", "auf dem Stick gefunden"),
             category: it.category.clone(),
             version: it.version.clone(),
             status: "installed".into(),
@@ -2002,7 +2051,7 @@ fn build_tools(root: &std::path::Path) -> Vec<ToolState> {
         if t.status == "installed" {
             if let Some(missing) = catalog::broken_launch_target(root, &folder_cat(t), &t.name) {
                 t.status = "broken".into();
-                t.detail = format!("Unvollständig – '{missing}' fehlt");
+                t.detail = tr!("Incomplete: '{missing}' is missing", "Unvollständig – '{missing}' fehlt");
             }
         }
         if t.status == "installed" {
@@ -2288,7 +2337,7 @@ fn do_pick_drive(path: String) {
 }
 
 fn do_pick_folder() {
-    match rfd::FileDialog::new().set_title("Stick-Wurzel wählen").pick_folder() {
+    match rfd::FileDialog::new().set_title(tr!("Choose the drive root", "Stick-Wurzel wählen")).pick_folder() {
         Some(dir) => set_root(dir),
         None => {
             with_ctx(|ctx| {
@@ -2334,7 +2383,7 @@ fn build_mini_items() -> Vec<MiniItem> {
                 items.push(MiniItem {
                     kind: "header".into(),
                     id: -1,
-                    name: cur.clone().into(),
+                    name: catalog::category_label(&cur).into(),
                     mono: "".into(),
                     icon: slint::Image::default(),
                     has_icon: false,
@@ -2485,6 +2534,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("SLINT_BACKEND", "winit-software");
     }
     let ui = MainWindow::new()?;
+    apply_language(&ui, saved_or_system_german());
+    ui.on_set_language(|l| set_language(l.as_str()));
 
     let root = initial_root();
     // Work folders an interrupted install left behind (killed app, pulled stick).
@@ -2555,8 +2606,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Cards and the CLI view both pass tool ids (curated ids == catalog index).
     ui.on_open_terminal(|id| open_terminal_for(id as usize));
     ui.on_copy_cmd(|c| match maxtrix_engine::cli::copy_to_clipboard(&c) {
-        Ok(()) => show_toast("Befehl kopiert – im Terminal einfügen", "ok"),
-        Err(e) => show_toast(format!("Kopieren fehlgeschlagen: {e}"), "error"),
+        Ok(()) => show_toast(tr!("Command copied. Paste it in the terminal", "Befehl kopiert – im Terminal einfügen"), "ok"),
+        Err(e) => show_toast(tr!("Copy failed: {e}", "Kopieren fehlgeschlagen: {e}"), "error"),
     });
     ui.on_toggle_verified(|| {
         with_ctx(|ctx| {

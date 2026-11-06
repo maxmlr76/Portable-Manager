@@ -61,7 +61,7 @@ pub fn search_page(query: &str, skip: usize, top: usize) -> Result<SearchPage> {
         .context("ScoopSearch-Anfrage fehlgeschlagen")?
         .into_string()?;
 
-    let json: Value = serde_json::from_str(&text).context("ScoopSearch-Antwort ungültig")?;
+    let json: Value = serde_json::from_str(&text).context(crate::tr!("invalid ScoopSearch response", "ScoopSearch-Antwort ungültig"))?;
     let total = json["@odata.count"].as_u64().unwrap_or(0) as usize;
     let mut hits = Vec::new();
     if let Some(arr) = json["value"].as_array() {

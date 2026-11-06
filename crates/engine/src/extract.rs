@@ -10,7 +10,7 @@ use std::path::{Component, Path, PathBuf};
 /// contents of a top-level `extract_dir`. Returns the number of files written.
 pub fn extract_zip_file(archive: &Path, target: &Path, extract_dir: Option<&Path>) -> Result<usize> {
     let f = fs::File::open(archive)
-        .with_context(|| format!("Archiv nicht lesbar: {}", archive.display()))?;
+        .with_context(|| crate::tr!("cannot read archive: {}", "Archiv nicht lesbar: {}", archive.display()))?;
     extract_zip(BufReader::new(f), target, extract_dir)
 }
 
@@ -47,7 +47,7 @@ fn extract_zip<R: Read + Seek>(reader: R, target: &Path, extract_dir: Option<&Pa
                 fs::create_dir_all(parent)?;
             }
             let mut f = fs::File::create(&out)
-                .with_context(|| format!("Kann Datei nicht schreiben: {}", out.display()))?;
+                .with_context(|| crate::tr!("cannot write file: {}", "Kann Datei nicht schreiben: {}", out.display()))?;
             std::io::copy(&mut entry, &mut f)?;
             written += 1;
         }

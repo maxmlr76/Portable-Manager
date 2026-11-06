@@ -43,15 +43,16 @@ Copy-Item $rel (Join-Path $dist "PortableManager.exe")
 foreach ($name in "7z.exe", "7z.dll", "License.txt") {
     Copy-Item (Join-Path $root "vendor\7-zip\$name") (Join-Path $dist "vendor\7-zip\")
 }
-Copy-Item (Join-Path $root "packaging\README.txt") (Join-Path $dist "LIESMICH.txt")
+Copy-Item (Join-Path $root "packaging\README.txt") (Join-Path $dist "README.txt")
+Copy-Item (Join-Path $root "packaging\LIESMICH.txt") (Join-Path $dist "LIESMICH.txt")
 Copy-Item (Join-Path $root "THIRD-PARTY-NOTICES.txt") $dist
 Copy-Item (Join-Path $root "LICENSE") (Join-Path $licenses "LICENSE.txt")
 Copy-Item (Join-Path $root "TRADEMARKS.md") $licenses
 Copy-Item (Join-Path $root "crates\app\ui\OFL-Saira.txt") $licenses
 Copy-Item (Join-Path $root "crates\app\ui\OFL-Audiowide.txt") $licenses
 & (Join-Path $PSScriptRoot "rust-notices.ps1") -OutFile (Join-Path $licenses "RUST-CRATES.txt")
-Set-Content (Join-Path $dist "Tools\_hier-landen-deine-tools.txt") `
-    "Ueber die App installierte Tools landen hier unter <Kategorie>\<Tool>\."
+Set-Content (Join-Path $dist "Tools\_your-tools-go-here.txt") `
+    "Tools installed through the app are stored here under <category>\<tool>\."
 
 # Optional: EXE signieren, bevor sie ins Zip wandert.
 $exe = Join-Path $dist "PortableManager.exe"

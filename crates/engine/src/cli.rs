@@ -34,8 +34,8 @@ pub fn cli_tools() -> &'static [CliTool] {
             env: &[],
             commands: &[
                 "nmap -sn 192.168.1.0/24",
-                "nmap -sT -sV -T4 <ziel>",
-                "nmap -p- -Pn <ziel>",
+                "nmap -sT -sV -T4 <target>",
+                "nmap -p- -Pn <target>",
             ],
         },
         CliTool {
@@ -50,7 +50,7 @@ pub fn cli_tools() -> &'static [CliTool] {
         CliTool {
             name: "gnupg",
             env: &["GNUPGHOME  =  Tools\\Sicherheit\\gnupg\\home"],
-            commands: &["gpg --list-keys", "gpg --full-generate-key", "gpg -c <datei>"],
+            commands: &["gpg --list-keys", "gpg --full-generate-key", "gpg -c <file>"],
         },
         CliTool {
             name: "yt-dlp",
@@ -60,12 +60,12 @@ pub fn cli_tools() -> &'static [CliTool] {
         CliTool {
             name: "ffmpeg",
             env: &[],
-            commands: &["ffmpeg -i <eingabe> <ausgabe.mp4>", "ffmpeg -i <video> -vn -c:a copy <audio.m4a>", "ffprobe <datei>"],
+            commands: &["ffmpeg -i <input> <output.mp4>", "ffmpeg -i <video> -vn -c:a copy <audio.m4a>", "ffprobe <file>"],
         },
         CliTool {
             name: "ripgrep",
             env: &[],
-            commands: &["rg <muster>", "rg -i -n <muster> <pfad>", "rg --files -g \"*.txt\""],
+            commands: &["rg <pattern>", "rg -i -n <pattern> <path>", "rg --files -g \"*.txt\""],
         },
         CliTool {
             name: "fzf",
@@ -75,12 +75,12 @@ pub fn cli_tools() -> &'static [CliTool] {
         CliTool {
             name: "nodejs",
             env: &[],
-            commands: &["node --version", "npx <paket>", "node <skript.js>"],
+            commands: &["node --version", "npx <package>", "node <script.js>"],
         },
         CliTool {
             name: "ghidra",
             env: &["JAVA_HOME  =  Tools\\_runtime\\<jdk>", "PATH  +=  %JAVA_HOME%\\bin"],
-            commands: &["analyzeHeadless <projektordner> Proj -import <datei>"],
+            commands: &["analyzeHeadless <project-folder> Proj -import <file>"],
         },
     ]
 }
@@ -109,7 +109,7 @@ fn push_unique(dirs: &mut Vec<String>, d: String) {
 
 /// Resolve the PATH dirs + env for one installed CLI tool.
 pub fn cli_session(root: &Path, name: &str) -> Result<CliSession> {
-    let t = find_cli(name).ok_or_else(|| anyhow!("'{name}' ist kein CLI-Werkzeug"))?;
+    let t = find_cli(name).ok_or_else(|| anyhow!(crate::tr!("'{name}' is not a CLI tool", "'{name}' ist kein CLI-Werkzeug")))?;
     tool_session(root, t.category(), name)
 }
 
@@ -117,7 +117,7 @@ pub fn cli_session(root: &Path, name: &str) -> Result<CliSession> {
 pub fn tool_session(root: &Path, category: &str, name: &str) -> Result<CliSession> {
     let dir = catalog::install_dir(root, category, name);
     if !dir.exists() {
-        return Err(anyhow!("{name} ist nicht installiert"));
+        return Err(anyhow!(crate::tr!("{name} is not installed", "{name} ist nicht installiert")));
     }
 
     let (env, mut path_dirs) = catalog::resolved_launch_env(root, category, name);
@@ -164,7 +164,7 @@ fn spawn_powershell(startup: &str) -> Result<()> {
         const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
         cmd.creation_flags(CREATE_NEW_CONSOLE);
     }
-    cmd.spawn().context("Terminal (PowerShell) konnte nicht geöffnet werden")?;
+    cmd.spawn().context(crate::tr!("could not open the terminal (PowerShell)", "Terminal (PowerShell) konnte nicht geöffnet werden"))?;
     Ok(())
 }
 
@@ -228,7 +228,7 @@ pub fn open_console(root: &Path) -> Result<()> {
         }
     }
     if names.is_empty() {
-        return Err(anyhow!("keine CLI-Werkzeuge installiert"));
+        return Err(anyhow!(crate::tr!("no CLI tools installed", "keine CLI-Werkzeuge installiert")));
     }
     let header = format!("Maxtrix IT-Konsole  -  im PATH: {}", names.join(", "));
     open_terminal(root, &path_dirs, &env, &header, &[])
@@ -246,7 +246,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    let mut child = cmd.spawn().context("Zwischenablage nicht erreichbar")?;
+    let mut child = cmd.spawn().context(crate::tr!("clipboard not available", "Zwischenablage nicht erreichbar"))?;
     if let Some(mut si) = child.stdin.take() {
         si.write_all(text.as_bytes()).ok();
     }

@@ -102,7 +102,7 @@ pub fn prepare(new: &Path, old: Option<&Path>, persist: &[String], markers: &[&s
                 // as Scoop's OBS script.
                 Some(src) if src.is_dir() && dst.is_dir() => {
                     merge_missing(&src, &dst, &rel, &mut carried)
-                        .with_context(|| format!("Daten '{entry}' nicht übernehmbar"))?;
+                        .with_context(|| crate::tr!("could not carry over data '{entry}'", "Daten '{entry}' nicht übernehmbar"))?;
                 }
                 // Otherwise the user's data wins over whatever the package ships
                 // (a default `.ini`, an empty profile folder …).
@@ -112,7 +112,7 @@ pub fn prepare(new: &Path, old: Option<&Path>, persist: &[String], markers: &[&s
                     } else if dst.exists() {
                         fs::remove_file(&dst)?;
                     }
-                    move_path(&src, &dst).with_context(|| format!("Daten '{entry}' nicht übernehmbar"))?;
+                    move_path(&src, &dst).with_context(|| crate::tr!("could not carry over data '{entry}'", "Daten '{entry}' nicht übernehmbar"))?;
                     carried.0.push(rel);
                 }
                 None if !dst.exists() => create_missing(new, &rel, entry)?,

@@ -34,6 +34,7 @@ struct DriveOption {
 // A category filter chip on the Discover page ("" = all), with its icon.
 struct CatItem {
     name: string,
+    label: string,    // shown text; name = stable key
     icon: string,
     count: int,
     active: bool,
@@ -359,10 +360,10 @@ component StatusPill inherits Rectangle {
         }
         Text {
             text: root.status == "update" ? "UPDATE"
-                : root.status == "broken" ? "DEFEKT"
-                : root.status == "error" ? "FEHLER"
-                : root.status == "installing" ? "LÄUFT"
-                : "INSTALLIERT";
+                : root.status == "broken" ? @tr("BROKEN")
+                : root.status == "error" ? @tr("ERROR")
+                : root.status == "installing" ? @tr("WORKING")
+                : @tr("INSTALLED");
             color: root.bad ? Mx.danger : (root.filled ? Mx.text : Mx.muted);
             font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px;
             vertical-alignment: center;
@@ -481,15 +482,15 @@ component ActionCluster inherits VerticalLayout {
     alignment: center; spacing: 7px;
 
     if root.item.status == "available" : ChromeButton {
-        label: "Installieren"; clicked => { root.install(root.item.id); }
+        label: @tr("Install"); clicked => { root.install(root.item.id); }
     }
     if root.item.status == "error" : ChromeButton {
-        label: "Erneut versuchen"; clicked => { root.install(root.item.id); }
+        label: @tr("Retry"); clicked => { root.install(root.item.id); }
     }
     if root.item.status == "broken" : HorizontalLayout {
         spacing: 6px;
-        if root.item.reinstallable : ChromeButton { label: "Neu installieren"; min-width: 112px; clicked => { root.install(root.item.id); } }
-        GhostButton { label: "Entfernen"; min-width: 80px; danger-hover: true; clicked => { root.remove(root.item.id); } }
+        if root.item.reinstallable : ChromeButton { label: @tr("Reinstall"); min-width: 112px; clicked => { root.install(root.item.id); } }
+        GhostButton { label: @tr("Remove"); min-width: 80px; danger-hover: true; clicked => { root.remove(root.item.id); } }
     }
     // Fortschritt als Teile-Kette + Abbrechen (der Status-Text steht in der
     // Kartenzeile darüber). Die Leiste muss auch ins 2-Spalten-Raster passen.
@@ -500,7 +501,7 @@ component ActionCluster inherits VerticalLayout {
             min-width: 110px; preferred-width: 190px;
             Bits { value: root.item.progress; parts: 20; }
         }
-        GhostButton { label: "Abbrechen"; min-width: 84px; clicked => { root.cancel(root.item.id); } }
+        GhostButton { label: @tr("Cancel"); min-width: 84px; clicked => { root.cancel(root.item.id); } }
     }
     // Mindestbreiten bewusst knapp: In GridCards (2-Spalten-Raster, ~250px
     // Content-Breite) muss die Leiste komplett hineinpassen — sonst treibt sie
@@ -508,18 +509,18 @@ component ActionCluster inherits VerticalLayout {
     if root.item.status == "installed" : HorizontalLayout {
         spacing: 6px;
         // Command-line tools would only flash a console window — open a terminal instead.
-        if !root.item.cli : ChromeButton { label: "Starten"; min-width: 72px; clicked => { root.launch(root.item.id); } }
+        if !root.item.cli : ChromeButton { label: @tr("Launch"); min-width: 72px; clicked => { root.launch(root.item.id); } }
         if root.item.cli : ChromeButton { label: "Terminal"; min-width: 78px; clicked => { root.terminal(root.item.id); } }
-        GhostButton { label: "Ordner"; min-width: 64px; clicked => { root.open(root.item.id); } }
-        GhostButton { label: "Entfernen"; min-width: 76px; danger-hover: true; clicked => { root.remove(root.item.id); } }
+        GhostButton { label: @tr("Folder"); min-width: 64px; clicked => { root.open(root.item.id); } }
+        GhostButton { label: @tr("Remove"); min-width: 76px; danger-hover: true; clicked => { root.remove(root.item.id); } }
     }
     if root.item.status == "done" : StatusPill { status: "done"; }
     if root.item.status == "update" : HorizontalLayout {
         spacing: 6px;
-        if !root.item.cli : GhostButton { label: "Starten"; min-width: 68px; clicked => { root.launch(root.item.id); } }
+        if !root.item.cli : GhostButton { label: @tr("Launch"); min-width: 68px; clicked => { root.launch(root.item.id); } }
         if root.item.cli : GhostButton { label: "Terminal"; min-width: 76px; clicked => { root.terminal(root.item.id); } }
-        GhostButton { label: "Ordner"; min-width: 64px; clicked => { root.open(root.item.id); } }
-        ChromeButton { label: "Aktualisieren"; min-width: 104px; clicked => { root.update(root.item.id); } }
+        GhostButton { label: @tr("Folder"); min-width: 64px; clicked => { root.open(root.item.id); } }
+        ChromeButton { label: @tr("Update"); min-width: 104px; clicked => { root.update(root.item.id); } }
     }
 }
 
@@ -679,7 +680,7 @@ component FeatureCard inherits CardFrame {
             Text { text: root.item.summary; color: Mx.muted; font-size: 13px; wrap: word-wrap; overflow: elide; min-height: 34px; max-height: 34px; }
             HorizontalLayout {
                 spacing: 7px; alignment: start;
-                Chip { label: "Kuratiert"; }
+                Chip { label: @tr("Curated"); }
                 Chip { label: root.item.category; }
                 if root.item.status != "available" : StatusPill { status: root.item.status; }
                 InfoLine { item: root.item; horizontal-stretch: 1; }
@@ -813,11 +814,11 @@ component CliCard inherits Rectangle {
             VerticalLayout {
                 alignment: center;
                 if root.item.installed : ChromeButton {
-                    label: "Terminal öffnen"; min-width: 138px;
+                    label: @tr("Open terminal"); min-width: 138px;
                     clicked => { root.terminal(root.item.id); }
                 }
                 if !root.item.installed : ChromeButton {
-                    label: "Installieren"; min-width: 120px;
+                    label: @tr("Install"); min-width: 120px;
                     clicked => { root.install(root.item.id); }
                 }
             }
@@ -837,13 +838,13 @@ component CliCard inherits Rectangle {
                 padding-left: 12px; padding-right: 12px; spacing: 10px;
                 Text { text: ">"; color: Mx.faint; font-family: "Consolas"; font-size: 12.5px; vertical-alignment: center; }
                 Text { text: c; color: Mx.silver; font-family: "Consolas"; font-size: 12.5px; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
-                Text { text: cmd-ta.has-hover ? "kopieren" : ""; color: Mx.faint; font-size: 11px; vertical-alignment: center; }
+                Text { text: cmd-ta.has-hover ? @tr("copy") : ""; color: Mx.faint; font-size: 11px; vertical-alignment: center; }
             }
         }
         Text {
             text: root.item.installed
-                ? "Klick auf einen Befehl kopiert ihn in die Zwischenablage."
-                : "Noch nicht installiert – oben installieren, dann öffnet sich ein Terminal mit dem Tool im PATH.";
+                ? @tr("Click a command to copy it to the clipboard.")
+                : @tr("Not installed yet. Install it above, then a terminal opens with the tool on PATH.");
             color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
         }
     }
@@ -935,13 +936,15 @@ export component MainWindow inherits Window {
     property <length> content-w: contentcol.width;
     changed content-w => { root.content-resized(self.content-w); }
     in property <string> build-tag;
+    in property <string> language: "en";
+    callback set-language(string);
     // True while any install/update runs (the drive glow then circles).
     in property <bool> busy: false;
     // Confirmation for destructive actions (filled by Rust, accepted via confirm-accept).
     in-out property <bool> confirm-open: false;
     in property <string> confirm-title;
     in property <string> confirm-text;
-    in property <string> confirm-button: "Entfernen";
+    in property <string> confirm-button: @tr("Remove");
     callback confirm-accept();
     // User lists
     in property <[ListItem]> user-lists;
@@ -982,7 +985,7 @@ export component MainWindow inherits Window {
     in property <string> drive-info: "";
     in property <string> drive-cap: "";
     in property <float> drive-fraction: 0;
-    in property <string> view-title: "Entdecken";
+    in property <string> view-title: @tr("Discover");
     in property <string> view-subtitle: "";
     in property <bool> verified-only: true;
     callback toggle-verified();
@@ -1106,12 +1109,12 @@ export component MainWindow inherits Window {
                     }
                 }
 
-                HorizontalLayout { padding-left: 6px; padding-bottom: 4px; MxLabel { text: "BIBLIOTHEK"; } }
-                NavItem { label: "Entdecken"; icon: "discover"; view-id: "discover"; current: root.current-view; clicked => { root.select-view("discover"); } }
-                NavItem { label: "Installiert"; icon: "installed"; view-id: "installed"; current: root.current-view; clicked => { root.select-view("installed"); } }
+                HorizontalLayout { padding-left: 6px; padding-bottom: 4px; MxLabel { text: @tr("LIBRARY"); } }
+                NavItem { label: @tr("Discover"); icon: "discover"; view-id: "discover"; current: root.current-view; clicked => { root.select-view("discover"); } }
+                NavItem { label: @tr("Installed"); icon: "installed"; view-id: "installed"; current: root.current-view; clicked => { root.select-view("installed"); } }
                 NavItem { label: "Updates"; icon: "updates"; view-id: "updates"; current: root.current-view; badge: root.update-count; clicked => { root.select-view("updates"); } }
-                NavItem { label: "Alle durchsuchen"; icon: "search"; view-id: "search"; current: root.current-view; clicked => { root.select-view("search"); } }
-                NavItem { label: "CLI-Werkzeuge"; icon: "cli"; view-id: "cli"; current: root.current-view; clicked => { root.select-view("cli"); } }
+                NavItem { label: @tr("Search all"); icon: "search"; view-id: "search"; current: root.current-view; clicked => { root.select-view("search"); } }
+                NavItem { label: @tr("CLI tools"); icon: "cli"; view-id: "cli"; current: root.current-view; clicked => { root.select-view("cli"); } }
 
                 Rectangle { height: 8px; }
                 HorizontalLayout {
@@ -1119,7 +1122,7 @@ export component MainWindow inherits Window {
                     VerticalLayout {
                         alignment: center;
                         MxLabel {
-                            text: root.dragging ? "AUF LISTE ZIEHEN" : "MEINE LISTEN";
+                            text: root.dragging ? @tr("DROP ON A LIST") : @tr("MY LISTS");
                             color: root.dragging ? Mx.text : Mx.faint;
                         }
                     }
@@ -1239,7 +1242,7 @@ export component MainWindow inherits Window {
                                     }
                                 }
                                 if l.tools.length == 0 : Text {
-                                    text: "Leer – Tools über das Listen-Symbol einer Karte hinzufügen oder hierher ziehen.";
+                                    text: @tr("Empty. Add tools with the list icon on a card, or drag them here.");
                                     color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
                                 }
                             }
@@ -1261,11 +1264,11 @@ export component MainWindow inherits Window {
                             HorizontalLayout {
                                 padding-left: 10px; spacing: 8px;
                                 VerticalLayout { alignment: center; Text { text: "+"; color: Mx.silver; font-size: 15px; } }
-                                VerticalLayout { alignment: center; Text { text: "Neue Liste mit diesem Tool"; color: Mx.silver; font-size: 12px; } }
+                                VerticalLayout { alignment: center; Text { text: @tr("New list with this tool"); color: Mx.silver; font-size: 12px; } }
                             }
                         }
                         if root.user-lists.length == 0 && !root.dragging : Text {
-                            text: "Noch keine Liste – oben mit + anlegen oder ein Tool am Listen-Symbol hierher ziehen.";
+                            text: @tr("No lists yet. Create one with + above, or drag a tool here by its list icon.");
                             color: Mx.faint; font-size: 10.5px; wrap: word-wrap;
                         }
                     }
@@ -1309,7 +1312,7 @@ export component MainWindow inherits Window {
                                 Rectangle { horizontal-stretch: 1; }
                                 HorizontalLayout {
                                     alignment: end; spacing: 3px;
-                                    Text { text: "wechseln"; color: Mx.silver; font-size: 10px; font-weight: 600; vertical-alignment: center; }
+                                    Text { text: @tr("change"); color: Mx.silver; font-size: 10px; font-weight: 600; vertical-alignment: center; }
                                     VerticalLayout { alignment: center; Icon { kind: "chevron"; tint: Mx.silver; width: 10px; height: 10px; } }
                                 }
                             }
@@ -1320,6 +1323,11 @@ export component MainWindow inherits Window {
                     }
                 }
                 Rectangle { height: 4px; }
+                HorizontalLayout {
+                    alignment: center; spacing: 2px;
+                    SegItem { label: "EN"; active: root.language != "de"; clicked => { root.set-language("en"); } }
+                    SegItem { label: "DE"; active: root.language == "de"; clicked => { root.set-language("de"); } }
+                }
                 Text {
                     text: root.build-tag; color: about-ta.has-hover ? Mx.silver : Mx.faint; font-size: 9px; horizontal-alignment: center;
                     about-ta := TouchArea { mouse-cursor: pointer; clicked => { root.about-open = true; } }
@@ -1393,7 +1401,7 @@ export component MainWindow inherits Window {
                                 }
                             }
                             Text {
-                                text: "Nur verifizierte Quellen";
+                                text: @tr("Verified sources only");
                                 color: root.verified-only ? Mx.text : Mx.muted;
                                 font-size: 12px; font-weight: 600; vertical-alignment: center;
                             }
@@ -1429,7 +1437,7 @@ export component MainWindow inherits Window {
                         }
                         Text {
                             x: 37px;
-                            text: root.current-view == "search" ? "Im ganzen Scoop-Katalog suchen…" : "Suchen…";
+                            text: root.current-view == "search" ? @tr("Search the whole Scoop catalog…") : @tr("Search…");
                             color: Mx.faint;
                             font-size: 13px;
                             vertical-alignment: center;
@@ -1458,18 +1466,18 @@ export component MainWindow inherits Window {
                     // Search controls: sort + page size (only in the search view).
                     if root.current-view == "search" : HorizontalLayout {
                         spacing: 9px;
-                        VerticalLayout { alignment: center; Text { text: "Sortieren"; color: Mx.faint; font-size: 11px; } }
+                        VerticalLayout { alignment: center; Text { text: @tr("Sort"); color: Mx.faint; font-size: 11px; } }
                         Rectangle {
                             border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
                             HorizontalLayout {
                                 padding: 3px; spacing: 2px;
-                                SegItem { label: "Relevanz"; active: root.search-sort == "relevanz"; clicked => { root.set-sort("relevanz"); } }
-                                SegItem { label: "Sterne"; active: root.search-sort == "sterne"; clicked => { root.set-sort("sterne"); } }
+                                SegItem { label: @tr("Relevance"); active: root.search-sort == "relevanz"; clicked => { root.set-sort("relevanz"); } }
+                                SegItem { label: @tr("Stars"); active: root.search-sort == "sterne"; clicked => { root.set-sort("sterne"); } }
                                 SegItem { label: "Name"; active: root.search-sort == "name"; clicked => { root.set-sort("name"); } }
                             }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        VerticalLayout { alignment: center; Text { text: "Anzahl"; color: Mx.faint; font-size: 11px; } }
+                        VerticalLayout { alignment: center; Text { text: @tr("Show"); color: Mx.faint; font-size: 11px; } }
                         Rectangle {
                             border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
                             HorizontalLayout {
@@ -1487,7 +1495,7 @@ export component MainWindow inherits Window {
                         for cr in root.chip-rows : HorizontalLayout {
                             alignment: start; spacing: 7px;
                             for c in cr.chips : FilterChip {
-                                label: c.name == "" ? "Alle" : c.name;
+                                label: c.name == "" ? @tr("All") : c.label;
                                 glyph: c.icon; count: c.count; active: c.active;
                                 clicked => { root.set-discover-cat(c.name); }
                             }
@@ -1520,12 +1528,12 @@ export component MainWindow inherits Window {
                                 padding-left: 16px; padding-right: 16px; spacing: 14px;
                                 VerticalLayout {
                                     alignment: center; spacing: 2px; horizontal-stretch: 1;
-                                    Text { text: "Alle Updates installieren"; color: Mx.text; font-size: 15px; font-weight: 600; }
-                                    Text { text: "Beim Start wird automatisch auf neue Versionen geprüft."; color: Mx.muted; font-size: 11px; }
+                                    Text { text: @tr("Install all updates"); color: Mx.text; font-size: 15px; font-weight: 600; }
+                                    Text { text: @tr("New versions are checked automatically at startup."); color: Mx.muted; font-size: 11px; }
                                 }
                                 VerticalLayout {
                                     alignment: center;
-                                    ChromeButton { label: "Alle aktualisieren"; min-width: 168px; clicked => { root.update-all(); } }
+                                    ChromeButton { label: @tr("Update all"); min-width: 168px; clicked => { root.update-all(); } }
                                 }
                             }
                         }
@@ -1625,7 +1633,7 @@ export component MainWindow inherits Window {
                         height: 140px;
                         Text {
                             width: parent.width; height: parent.height;
-                            text: root.current-view == "search" ? "Tippe oben, um im Scoop-Katalog zu suchen." : "Nichts hier.";
+                            text: root.current-view == "search" ? @tr("Type above to search the Scoop catalog.") : @tr("Nothing here.");
                             color: Mx.faint; font-size: 14px;
                             horizontal-alignment: center; vertical-alignment: center;
                         }
@@ -1639,7 +1647,7 @@ export component MainWindow inherits Window {
                             VerticalLayout {
                                 alignment: center;
                                 GhostButton {
-                                    label: root.search-loading-more ? "Lädt …" : "Mehr anzeigen";
+                                    label: root.search-loading-more ? @tr("Loading …") : @tr("Show more");
                                     min-width: 190px;
                                     clicked => { if (!root.search-loading-more) { root.load-more(); } }
                                 }
@@ -1669,12 +1677,12 @@ export component MainWindow inherits Window {
                             }
                             VerticalLayout {
                                 alignment: center; spacing: 3px; horizontal-stretch: 1;
-                                Text { text: "IT-Konsole"; color: Mx.text; font-size: 17px; font-weight: 700; }
-                                Text { text: "Eine Shell, in der alle installierten CLI-Tools gleichzeitig im PATH liegen."; color: Mx.muted; font-size: 12.5px; wrap: word-wrap; }
+                                Text { text: @tr("IT console"); color: Mx.text; font-size: 17px; font-weight: 700; }
+                                Text { text: @tr("A shell with all installed CLI tools on PATH at once."); color: Mx.muted; font-size: 12.5px; wrap: word-wrap; }
                             }
                             VerticalLayout {
                                 alignment: center;
-                                ChromeButton { label: "Konsole öffnen"; min-width: 150px; clicked => { root.open-console(); } }
+                                ChromeButton { label: @tr("Open console"); min-width: 150px; clicked => { root.open-console(); } }
                             }
                         }
                     }
@@ -1688,7 +1696,7 @@ export component MainWindow inherits Window {
                         height: 120px;
                         Text {
                             width: parent.width; height: parent.height;
-                            text: "Keine CLI-Werkzeuge im Katalog.";
+                            text: @tr("No CLI tools in the catalog.");
                             color: Mx.faint; font-size: 14px;
                             horizontal-alignment: center; vertical-alignment: center;
                         }
@@ -1742,7 +1750,7 @@ export component MainWindow inherits Window {
             Rectangle { x: 0; width: 2px; height: parent.height; background: Mx.steel; }
             VerticalLayout {
               padding: 13px; padding-left: 15px; spacing: 8px;
-              MxLabel { text: "PLUGINS & ABHÄNGIGKEITEN"; font-size: 10px; letter-spacing: 1.6px; }
+              MxLabel { text: @tr("PLUGINS & DEPENDENCIES"); font-size: 10px; letter-spacing: 1.6px; }
               for d in root.drawer-deps : Text { text: "·  " + d; color: Mx.silver; font-size: 12px; wrap: word-wrap; }
             }
           }
@@ -1752,20 +1760,20 @@ export component MainWindow inherits Window {
             vertical-stretch: 0;
             alignment: start;
             Rectangle { height: 1px; background: Mx.line; }
-            SpecRow { label: "QUELLE"; value: root.drawer-source == "" ? "…" : root.drawer-source; mono: true; }
-            SpecRow { label: "PRÜFSUMME"; value: root.drawer-hash == "" ? "…" : root.drawer-hash; mono: true; }
-            SpecRow { label: "ZIELORDNER"; value: root.drawer-target; mono: true; }
-            SpecRow { label: "GRÖSSE"; value: root.drawer-size; }
+            SpecRow { label: @tr("SOURCE"); value: root.drawer-source == "" ? "…" : root.drawer-source; mono: true; }
+            SpecRow { label: @tr("CHECKSUM"); value: root.drawer-hash == "" ? "…" : root.drawer-hash; mono: true; }
+            SpecRow { label: @tr("TARGET FOLDER"); value: root.drawer-target; mono: true; }
+            SpecRow { label: @tr("SIZE"); value: root.drawer-size; }
           }
 
-          if root.drawer-loading : Text { text: "Details werden geladen…"; color: Mx.faint; font-size: 11px; }
+          if root.drawer-loading : Text { text: @tr("Loading details…"); color: Mx.faint; font-size: 11px; }
 
           Rectangle { vertical-stretch: 1; }
 
           // Footer
           if root.drawer-action != "" : HorizontalLayout {
             spacing: 10px;
-            GhostButton { label: "Abbrechen"; min-width: 104px; clicked => { root.drawer-close(); } }
+            GhostButton { label: @tr("Cancel"); min-width: 104px; clicked => { root.drawer-close(); } }
             ChromeButton { label: root.drawer-action; horizontal-stretch: 1; clicked => { root.drawer-primary(); } }
           }
         }
@@ -1786,20 +1794,20 @@ export component MainWindow inherits Window {
         Ticks {}
         picker-lay := VerticalLayout {
           padding: 22px; spacing: 11px;
-          Text { text: "Stick-Wurzel wählen"; color: Mx.text; font-size: 17px; font-weight: 700; }
-          Text { text: "Wähle das Laufwerk deines Sticks – die Tools werden dann dort unter Tools\\ verwaltet."; color: Mx.muted; font-size: 12px; wrap: word-wrap; }
+          Text { text: @tr("Choose the drive root"); color: Mx.text; font-size: 17px; font-weight: 700; }
+          Text { text: @tr("Choose your USB drive. Tools are then managed there under Tools\\."); color: Mx.muted; font-size: 12px; wrap: word-wrap; }
 
-          if root.drives.length > 0 : MxLabel { text: "ERKANNTE WECHSELDATENTRÄGER"; font-size: 10px; letter-spacing: 1.8px; }
+          if root.drives.length > 0 : MxLabel { text: @tr("REMOVABLE DRIVES FOUND"); font-size: 10px; letter-spacing: 1.8px; }
           for d in root.drives : GhostButton {
             label: d.label;
             clicked => { root.pick-drive(d.path); }
           }
-          if root.drives.length == 0 : Text { text: "Kein Wechseldatenträger erkannt – nutze „Anderen Ordner wählen…“."; color: Mx.faint; font-size: 12px; wrap: word-wrap; }
+          if root.drives.length == 0 : Text { text: @tr("No removable drive found. Use “Choose another folder…”."); color: Mx.faint; font-size: 12px; wrap: word-wrap; }
 
           Rectangle { height: 4px; }
-          ChromeButton { label: "Anderen Ordner wählen…"; clicked => { root.pick-folder(); } }
-          GhostButton { label: "Aktueller App-Ordner"; clicked => { root.pick-drive(root.app-folder); } }
-          GhostButton { label: "Abbrechen"; clicked => { root.close-picker(); } }
+          ChromeButton { label: @tr("Choose another folder…"); clicked => { root.pick-folder(); } }
+          GhostButton { label: @tr("Current app folder"); clicked => { root.pick-drive(root.app-folder); } }
+          GhostButton { label: @tr("Cancel"); clicked => { root.close-picker(); } }
         }
       }
 
@@ -1817,11 +1825,11 @@ export component MainWindow inherits Window {
         Ticks {}
         menu-lay := VerticalLayout {
           padding: 18px; spacing: 7px;
-          Text { text: "Zu Liste hinzufügen"; color: Mx.text; font-size: 16px; font-weight: 700; }
+          Text { text: @tr("Add to list"); color: Mx.text; font-size: 16px; font-weight: 700; }
           Text { text: root.list-menu-title; color: Mx.muted; font-size: 12px; }
           Rectangle { height: 4px; }
           if root.list-menu-toggles.length == 0 : Text {
-            text: "Noch keine Liste. Lege links unter Meine Listen eine an.";
+            text: @tr("No lists yet. Create one on the left under My lists.");
             color: Mx.faint; font-size: 12px; wrap: word-wrap;
           }
           for t in root.list-menu-toggles : Rectangle {
@@ -1845,8 +1853,8 @@ export component MainWindow inherits Window {
             }
           }
           Rectangle { height: 4px; }
-          GhostButton { label: "+ Neue Liste…"; clicked => { root.list-menu-open = false; root.new-list-name = ""; root.new-list-tool-id = root.list-menu-id; root.new-list-tool-title = root.list-menu-title; root.new-list-open = true; } }
-          ChromeButton { label: "Fertig"; clicked => { root.list-menu-open = false; } }
+          GhostButton { label: @tr("+ New list…"); clicked => { root.list-menu-open = false; root.new-list-name = ""; root.new-list-tool-id = root.list-menu-id; root.new-list-tool-title = root.list-menu-title; root.new-list-open = true; } }
+          ChromeButton { label: @tr("Done"); clicked => { root.list-menu-open = false; } }
         }
       }
 
@@ -1865,12 +1873,12 @@ export component MainWindow inherits Window {
         Ticks {}
         nl-lay := VerticalLayout {
           padding: 20px; spacing: 12px;
-          Text { text: "Neue Liste"; color: Mx.text; font-size: 16px; font-weight: 700; }
-          if root.new-list-tool-title != "" : Text { text: root.new-list-tool-title + " kommt direkt hinein."; color: Mx.silver; font-size: 12px; }
+          Text { text: @tr("New list"); color: Mx.text; font-size: 16px; font-weight: 700; }
+          if root.new-list-tool-title != "" : Text { text: @tr("{} goes straight in.", root.new-list-tool-title); color: Mx.silver; font-size: 12px; }
           Rectangle {
             height: 40px; border-radius: Mx.radius-s; background: Mx.bg;
             border-width: 1px; border-color: nl-ti.has-focus ? Mx.silver : Mx.line-strong;
-            if root.new-list-name == "" : Text { text: "z. B. Pentest, Datenrettung, Alltag…"; color: Mx.faint; font-size: 13px; x: 13px; vertical-alignment: center; }
+            if root.new-list-name == "" : Text { text: @tr("e.g. Pentest, Data recovery, Everyday…"); color: Mx.faint; font-size: 13px; x: 13px; vertical-alignment: center; }
             nl-ti := TextInput {
               x: 13px; width: parent.width - 26px; height: parent.height;
               color: Mx.text; font-size: 13px; vertical-alignment: center; single-line: true;
@@ -1881,8 +1889,8 @@ export component MainWindow inherits Window {
           HorizontalLayout {
             spacing: 8px;
             Rectangle { horizontal-stretch: 1; }
-            GhostButton { label: "Abbrechen"; clicked => { root.new-list-open = false; } }
-            ChromeButton { label: "Anlegen"; clicked => { root.create-list(root.new-list-name); } }
+            GhostButton { label: @tr("Cancel"); clicked => { root.new-list-open = false; } }
+            ChromeButton { label: @tr("Create"); clicked => { root.create-list(root.new-list-name); } }
           }
         }
       }
@@ -1907,7 +1915,7 @@ export component MainWindow inherits Window {
           HorizontalLayout {
             spacing: 8px; padding-top: 4px;
             Rectangle { horizontal-stretch: 1; }
-            GhostButton { label: "Abbrechen"; clicked => { root.confirm-open = false; } }
+            GhostButton { label: @tr("Cancel"); clicked => { root.confirm-open = false; } }
             DangerButton { label: root.confirm-button; clicked => { root.confirm-open = false; root.confirm-accept(); } }
           }
         }
@@ -1932,7 +1940,7 @@ export component MainWindow inherits Window {
           Text { text: "Maxtrix Portable Manager"; color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
           Text { text: root.build-tag; color: Mx.faint; font-size: 11px; }
           Text {
-            text: "Open Source unter der MIT-Lizenz. Name und Logo „Maxtrix“ sind davon ausgenommen. Lizenzen der mitgelieferten Software (7-Zip, Slint, Schriften) stehen in THIRD-PARTY-NOTICES.txt neben der EXE.";
+            text: @tr("Open source under the MIT license. The “Maxtrix” name and logo are excluded. Licenses of the bundled software (7-Zip, Slint, fonts) are in THIRD-PARTY-NOTICES.txt next to the EXE.");
             color: Mx.muted; font-size: 12.5px; wrap: word-wrap;
           }
           Rectangle {
@@ -1942,7 +1950,7 @@ export component MainWindow inherits Window {
           HorizontalLayout {
             spacing: 8px; padding-top: 4px;
             Rectangle { horizontal-stretch: 1; }
-            ChromeButton { label: "Schließen"; min-width: 110px; clicked => { root.about-open = false; } }
+            ChromeButton { label: @tr("Close"); min-width: 110px; clicked => { root.about-open = false; } }
           }
         }
       }
@@ -1962,16 +1970,16 @@ export component MainWindow inherits Window {
         Ticks {}
         ca-lay := VerticalLayout {
           padding: 20px; spacing: 12px;
-          Text { text: "Maxtrix im Hintergrund weiterlaufen lassen?"; color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
+          Text { text: @tr("Keep Maxtrix running in the background?"); color: Mx.text; font-size: 16px; font-weight: 700; wrap: word-wrap; }
           Text {
-            text: "Im Infobereich (unten rechts, neben der Uhr) bleibt Maxtrix startbereit – ein Klick aufs Symbol öffnet den Schnellstart. Beenden jederzeit per Rechtsklick aufs Symbol → „Beenden“. Dort lässt sich die Wahl auch wieder ändern.";
+            text: @tr("Maxtrix stays ready in the notification area (bottom right, next to the clock). A click on its icon opens the quick start. Right-click the icon and choose “Quit” to exit at any time. You can also change this choice there.");
             color: Mx.muted; font-size: 12.5px; wrap: word-wrap;
           }
           HorizontalLayout {
             spacing: 8px; padding-top: 4px;
             Rectangle { horizontal-stretch: 1; }
-            GhostButton { label: "Beenden"; min-width: 96px; clicked => { root.close-ask-open = false; root.close-quit(); } }
-            ChromeButton { label: "Im Hintergrund weiterlaufen"; min-width: 214px; clicked => { root.close-ask-open = false; root.close-to-tray(); } }
+            GhostButton { label: @tr("Quit"); min-width: 96px; clicked => { root.close-ask-open = false; root.close-quit(); } }
+            ChromeButton { label: @tr("Keep running in background"); min-width: 214px; clicked => { root.close-ask-open = false; root.close-to-tray(); } }
           }
         }
       }
@@ -2033,8 +2041,8 @@ export component MainWindow inherits Window {
             alignment: center; spacing: 1px;
             Text { text: root.drag-tool; color: Mx.text; font-size: 12.5px; font-weight: 600; overflow: elide; }
             Text {
-              text: !ghost.target ? "Auf eine Liste links ziehen"
-                : (root.drag-hover-list == "+new" ? "+ neue Liste anlegen" : "→ " + root.drag-hover-list);
+              text: !ghost.target ? @tr("Drag onto a list on the left")
+                : (root.drag-hover-list == "+new" ? @tr("+ create a new list") : "→ " + root.drag-hover-list);
               color: ghost.target ? Mx.text : Mx.faint; font-size: 11px; overflow: elide;
             }
           }
@@ -2046,7 +2054,7 @@ export component MainWindow inherits Window {
 
 // Compact tray quick-launch window: name + icon per tool, grouped by category.
 export component MiniWindow inherits Window {
-    title: "Maxtrix — Schnellstart";
+    title: @tr("Maxtrix — Quick start");
     default-font-family: "Saira";
     width: 300px;
     height: 470px;
@@ -2099,7 +2107,7 @@ export component MiniWindow inherits Window {
                     height: 120px;
                     Text {
                         width: parent.width; height: parent.height;
-                        text: "Noch keine Tools installiert.";
+                        text: @tr("No tools installed yet.");
                         color: Mx.faint; font-size: 13px;
                         horizontal-alignment: center; vertical-alignment: center;
                     }

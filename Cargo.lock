@@ -3345,7 +3345,7 @@ dependencies = [
 
 [[package]]
 name = "maxtrix-app"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "maxtrix-engine",
  "png 0.17.16",
@@ -3361,7 +3361,7 @@ dependencies = [
 
 [[package]]
 name = "maxtrix-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "maxtrix-engine",
@@ -3370,7 +3370,7 @@ dependencies = [
 
 [[package]]
 name = "maxtrix-engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "md-5",

@@ -1,75 +1,64 @@
 MAXTRIX PORTABLE MANAGER
-==========================
+========================
 
-Ein portabler Verwalter fuer deine portablen Tools. Laeuft direkt vom Stick,
-ohne Installation.
+A portable manager for your portable tools. Runs directly from a USB drive,
+no installation needed.
 
-INHALT DIESES ORDNERS
+IN THIS FOLDER
+--------------
+  PortableManager.exe     The app. Double-click to start.
+  vendor\7-zip\           Bundled 7-Zip (unpacks installers / .7z after download).
+  Tools\                  Your tools (one subfolder per category).
+  README.txt              This file. LIESMICH.txt is the German version.
+  THIRD-PARTY-NOTICES.txt Notices for bundled software (7-Zip, Slint, fonts).
+  licenses\               License texts. Maxtrix itself is MIT, name and logo excluded.
+
+PUTTING IT ON A DRIVE
 ---------------------
-  PortableManager.exe   Die App. Doppelklick zum Starten.
-  vendor\7-zip\           Mitgeliefertes 7-Zip (entpackt Installer / .7z beim Download).
-  Tools\                  Hier liegen deine Tools (je Kategorie ein Unterordner).
-  LIESMICH.txt            Diese Datei.
-  THIRD-PARTY-NOTICES.txt Hinweise zu mitgelieferter Software (7-Zip, Slint, Schriften).
-  licenses\               Lizenztexte. Maxtrix selbst ist MIT, Name und Logo ausgenommen.
+  Copy the ENTIRE content of this folder to the root of your USB drive, for
+  example to E:\  so that E:\PortableManager.exe, E:\vendor\ and E:\Tools\
+  exist there. Then double-click PortableManager.exe.
 
-AUF DEN STICK BRINGEN
----------------------
-  Kopiere den GESAMTEN Inhalt dieses Ordners in die Wurzel deines Sticks,
-  z. B. nach E:\  -- sodass dort E:\PortableManager.exe, E:\vendor\ und
-  E:\Tools\ liegen. Dann PortableManager.exe doppelklicken.
+  The drive letter does not matter: the app keeps paths relative to the drive.
 
-  Der Laufwerksbuchstabe ist egal -- die App merkt sich Pfade relativ zum Stick.
+USAGE
+-----
+  - EN / DE at the bottom left switches the language.
+  - "Discover": install curated tools. Click a card to see the source, checksum,
+    dependencies and size before downloading.
+  - "Installed": everything on the drive. Launch, open folder, remove. Tools you
+    copy to Tools\<Category>\<Name>\ yourself also show up here.
+  - "Updates": shows when a newer version is available.
+  - "My lists" (left): your own collections. Add tools with the list icon at the
+    top right of a card, or drag that icon onto a list.
+  - Command-line tools (e.g. ripgrep, GnuPG) have "Terminal" instead of "Launch":
+    a console opens in the tool folder with the tool on PATH.
+  - Keyboard: Ctrl+F = search, Esc = close dialog or details.
 
-BENUTZUNG
+NOTES
+-----
+  - Downloads come from the official publishers and are verified by checksum.
+  - If the EXE is not signed with a trusted certificate, Windows SmartScreen may
+    warn at first start ("More info" -> "Run anyway").
+  - Some tools need extra drivers (e.g. Nmap: Npcap). No portable launcher can
+    replace those.
+  - Tray icon: left click opens or closes the quick start, right click shows the menu.
+  - At the first close the app asks whether to keep running in the notification
+    area or to quit. Change it later by right-clicking the tray icon.
+  - If the window stays white or blank on a PC (graphics driver): right-click the
+    tray icon, tick "Simple graphics", quit and restart the app.
+  - BEFORE UPDATING the app, quit it from the tray icon. Otherwise the old EXE is
+    locked and is not replaced when copying.
+  - Packages that install only through a setup program are left out on purpose:
+    they would set up on the PC instead of the drive.
+  - Tool settings and data stay in the tool's folder on the drive and survive updates.
+  - "Cancel" stops installs and updates. A cancelled or failed update changes
+    nothing: the previous version still starts.
+  - A running tool cannot be updated. Close it first.
+
+LIABILITY
 ---------
-  - "Entdecken": kuratierte Tools installieren. Klick auf eine Karte zeigt vor
-    dem Download Quelle, Pruefsumme, Abhaengigkeiten und Groesse.
-  - "Installiert": alles, was auf dem Stick liegt -- Starten / Ordner oeffnen /
-    Entfernen. Auch Tools, die du selbst nach Tools\<Kategorie>\<Name>\
-    hineinkopierst, tauchen hier automatisch auf.
-  - "Updates": zeigt an, wenn eine neuere Version verfuegbar ist.
-  - "Meine Listen" (links): eigene Sammlungen. Tools ueber das Listen-Symbol
-    oben rechts auf einer Karte hinzufuegen oder das Symbol auf eine Liste
-    ziehen. Der Pfeil vor einer Liste klappt ihre Tools direkt links auf.
-  - Kommandozeilen-Tools (z. B. ripgrep, GnuPG) haben "Terminal" statt
-    "Starten": es oeffnet sich eine Konsole im Tool-Ordner mit dem Tool im PATH.
-  - Tastatur: Strg+F = Suche, Esc = Dialog/Detailansicht schliessen.
+  The software comes without warranty (see licenses\LICENSE.txt). Use security tools
+  such as Nmap or hashcat only on your own systems or with permission.
 
-HINWEISE
---------
-  - Downloads kommen von den offiziellen Hersteller-Seiten und werden per
-    Pruefsumme (SHA256 o. ae.) verifiziert.
-  - Ist die EXE nicht mit einem vertrauenswuerdigen Zertifikat signiert, meldet
-    sich beim ersten Start evtl. Windows SmartScreen ("Weitere Informationen"
-    -> "Trotzdem ausfuehren"). Das ist bei Eigenbau-Programmen normal. Zum
-    Signieren siehe packaging\SIGNING.md.
-  - Manche Tools brauchen zusaetzliche Treiber (z. B. Nmap: Npcap) -- das kann
-    kein portabler Launcher ersetzen.
-  - Tray-Symbol: Linksklick oeffnet oder schliesst den Schnellstart, Rechtsklick
-    zeigt das Menue.
-  - Beim ersten Schliessen fragt die App, ob sie im Infobereich (Tray)
-    weiterlaufen oder beenden soll. Aendern: Rechtsklick aufs Tray-Icon ->
-    "Beim Schliessen im Infobereich bleiben". Ein erneuter Doppelklick auf die
-    EXE holt das laufende Fenster zurueck.
-  - Bleibt das Fenster auf einem PC weiss/leer (Grafiktreiber): Rechtsklick
-    aufs Tray-Icon -> "Einfache Grafik" anhaken, App beenden und neu starten.
-  - VOR DEM AKTUALISIEREN die App ueber das Tray-Icon beenden, sonst ist die
-    alte EXE gesperrt und wird beim Kopieren nicht ersetzt.
-  - Pakete, die nur ueber ein Setup-Programm installierbar sind, laesst Maxtrix
-    bewusst aus -- sie wuerden sich auf dem PC statt auf dem Stick einrichten.
-  - Einstellungen und Daten der Tools (z. B. Browser-Profile, VS-Code-Daten)
-    liegen im jeweiligen Tool-Ordner auf dem Stick und bleiben bei Updates
-    erhalten.
-  - Installationen und Updates lassen sich mit "Abbrechen" stoppen. Ein
-    abgebrochenes oder fehlgeschlagenes Update aendert nichts -- die bisherige
-    Version bleibt unveraendert startbar.
-  - Ein Tool, das gerade laeuft, kann nicht aktualisiert werden -- erst das
-    Tool schliessen, dann "Aktualisieren".
-
-HAFTUNG
--------
-  Die Software kommt ohne Gewaehrleistung (siehe licenses\LICENSE.txt). Sicherheits-
-  Tools wie Nmap oder hashcat nur auf eigenen Systemen oder mit Erlaubnis einsetzen.
-
-Version 0.1
+Version 0.1.1

@@ -6,7 +6,7 @@ to date and starts them with the right environment.
 
 ![Screenshot of the app](docs/screenshot.png)
 
-The user interface is currently in German. Windows only for now.
+The user interface is available in English and German (EN / DE switch at the bottom left). Windows only for now.
 
 ## Features
 

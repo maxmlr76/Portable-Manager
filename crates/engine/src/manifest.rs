@@ -174,11 +174,11 @@ pub fn parse_manifest(name: &str, v: &Value) -> Result<Manifest> {
 
     let urls = field("url").map(as_string_list).unwrap_or_default();
     if urls.is_empty() {
-        return Err(anyhow!("Manifest '{name}' hat keine Download-URL für 64-bit"));
+        return Err(anyhow!(crate::tr!("manifest '{name}' has no 64-bit download URL", "Manifest '{name}' hat keine Download-URL für 64-bit")));
     }
     let hashes = field("hash").map(as_string_list).unwrap_or_default();
     if hashes.len() < urls.len() {
-        return Err(anyhow!("Manifest '{name}' hat keinen Hash für jede Download-URL"));
+        return Err(anyhow!(crate::tr!("manifest '{name}' has no hash for every download URL", "Manifest '{name}' hat keinen Hash für jede Download-URL")));
     }
     // extract_dir / extract_to may be a string (applies to the first URL) or an
     // array aligned with the URLs — exactly like Scoop.

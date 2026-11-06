@@ -47,16 +47,16 @@ mod imp {
         let icon = Icon::from_rgba(rgba, w, h).ok()?;
 
         let menu = Menu::new();
-        let mi_mini = MenuItem::new("Schnellstart (Mini-Ansicht)", true, None);
-        let mi_open = MenuItem::new("Hauptfenster öffnen", true, None);
-        let mi_about = MenuItem::new("Über Maxtrix Portable Manager", true, None);
-        let mi_quit = MenuItem::new("Beenden", true, None);
+        let mi_mini = MenuItem::new(&maxtrix_engine::tr!("Quick start (mini view)", "Schnellstart (Mini-Ansicht)"), true, None);
+        let mi_open = MenuItem::new(&maxtrix_engine::tr!("Open main window", "Hauptfenster öffnen"), true, None);
+        let mi_about = MenuItem::new(&maxtrix_engine::tr!("About Maxtrix Portable Manager", "Über Maxtrix Portable Manager"), true, None);
+        let mi_quit = MenuItem::new(&maxtrix_engine::tr!("Quit", "Beenden"), true, None);
         // What the window's X does (asked once at the first close; changeable here).
         let keep = crate::close_action().as_deref() != Some("quit");
-        let mi_keep = CheckMenuItem::new("Beim Schließen im Infobereich bleiben", true, keep, None);
+        let mi_keep = CheckMenuItem::new(&maxtrix_engine::tr!("Stay in the notification area when closing", "Beim Schließen im Infobereich bleiben"), true, keep, None);
         // Rescue when the window stays blank/white (GPU driver): software renderer.
         let mi_soft = CheckMenuItem::new(
-            "Einfache Grafik (bei Anzeigefehlern, ab Neustart)",
+            &maxtrix_engine::tr!("Simple graphics (for display errors, after restart)", "Einfache Grafik (bei Anzeigefehlern, ab Neustart)"),
             true,
             crate::soft_render_setting(),
             None,
@@ -88,7 +88,18 @@ mod imp {
             .ok()?;
 
         let timer = Timer::default();
+        let mut german = maxtrix_engine::i18n::is_german();
         timer.start(TimerMode::Repeated, Duration::from_millis(150), move || {
+            // Follow the language switch.
+            if german != maxtrix_engine::i18n::is_german() {
+                german = !german;
+                mi_mini.set_text(maxtrix_engine::tr!("Quick start (mini view)", "Schnellstart (Mini-Ansicht)"));
+                mi_open.set_text(maxtrix_engine::tr!("Open main window", "Hauptfenster öffnen"));
+                mi_about.set_text(maxtrix_engine::tr!("About Maxtrix Portable Manager", "Über Maxtrix Portable Manager"));
+                mi_quit.set_text(maxtrix_engine::tr!("Quit", "Beenden"));
+                mi_keep.set_text(maxtrix_engine::tr!("Stay in the notification area when closing", "Beim Schließen im Infobereich bleiben"));
+                mi_soft.set_text(maxtrix_engine::tr!("Simple graphics (for display errors, after restart)", "Einfache Grafik (bei Anzeigefehlern, ab Neustart)"));
+            }
             while let Ok(ev) = MenuEvent::receiver().try_recv() {
                 if ev.id == id_open {
                     crate::show_main_window();

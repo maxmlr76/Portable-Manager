@@ -16,7 +16,7 @@ Slint
 -----
 User interface toolkit, copyright SixtyFPS GmbH. Used under the "Slint Royalty-free
 Desktop, Mobile, and Web Applications License 2.0". Full text in
-licenses\RUST-CRATES.txt. The attribution is shown in the app under "Ueber" and on
+licenses\RUST-CRATES.txt. The attribution is shown in the app under "About" and on
 the project page. https://slint.dev
 
 Fonts (embedded in the program)

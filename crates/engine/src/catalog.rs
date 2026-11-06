@@ -37,79 +37,158 @@ pub struct CatalogEntry {
 /// (`maxtrix audit --install` checks this). Packages that only work through a
 /// Scoop setup script (Python, GIMP, PowerToys, FastCopy, HxD, AutoHotkey,
 /// FileZilla) are deliberately left out — they can't be installed portably.
+/// A catalog entry's one-line description in the current language.
+pub fn summary(e: &CatalogEntry) -> &'static str {
+    if !crate::i18n::is_german() {
+        return e.summary;
+    }
+    match e.name {
+        "7zip" => "Entpackt & packt nahezu jedes Archivformat.",
+        "firefox" => "Datenschutzfreundlicher Standard-Browser.",
+        "brave" => "Chromium-Browser mit Werbe- & Tracker-Blocker.",
+        "thunderbird" => "Mail-, Kalender- & Newsreader-Client.",
+        "qbittorrent" => "Werbefreier BitTorrent-Client.",
+        "yt-dlp" => "Video/Audio von 1000+ Seiten laden (CLI).",
+        "everything" => "Sofort-Dateisuche in Echtzeit.",
+        "winmerge" => "Datei- & Ordnervergleich mit Merge.",
+        "peazip" => "Archivmanager mit starker Verschlüsselung.",
+        "hwinfo" => "Tiefe Hardware-Infos & Live-Sensoren.",
+        "cpu-z" => "CPU-, RAM- & Mainboard-Details.",
+        "gpu-z" => "Detailinfos zur Grafikkarte.",
+        "systeminformer" => "Prozess- & Handle-Explorer (ex Process Hacker).",
+        "bleachbit" => "System aufräumen & Spuren löschen.",
+        "keepassxc" => "Offline-Passwortmanager, plattformübergreifend.",
+        "cryptomator" => "Transparente Cloud-Ordner-Verschlüsselung.",
+        "gnupg" => "OpenPGP-Signatur & -Verschlüsselung (CLI).",
+        "hashcat" => "GPU-beschleunigte Passwort-Recovery.",
+        "eraser" => "Dateien sicher überschreiben & löschen.",
+        "nmap" => "Netzwerk- & Portscanner mit Service-Erkennung.",
+        "wireshark" => "Netzwerkprotokoll-Analyse.",
+        "putty" => "SSH-, Telnet- & Serial-Client.",
+        "winscp" => "SFTP-, SCP- & FTP-Dateitransfer.",
+        "rufus" => "Bootfähige USB-Sticks erstellen.",
+        "ventoy" => "Multi-ISO-Boot-Stick.",
+        "etcher" => "Images sicher auf USB/SD schreiben.",
+        "wiztree" => "Sehr schnelle Speicherplatz-Analyse.",
+        "testdisk" => "Partitionen retten & Dateien wiederherstellen.",
+        "ghidra" => "NSA Reverse-Engineering-Suite – zieht das JDK automatisch mit.",
+        "imhex" => "Moderner Hex-Editor mit Pattern-Language.",
+        "x64dbg" => "Open-Source x64/x32-Debugger für Windows.",
+        "cutter" => "GUI für Rizin (Reverse Engineering).",
+        "dnspy" => ".NET-Decompiler & -Debugger.",
+        "git" => "Versionsverwaltung.",
+        "nodejs" => "JavaScript-Runtime.",
+        "ripgrep" => "Blitzschnelle rekursive Codesuche.",
+        "fzf" => "Fuzzy-Finder für die Kommandozeile.",
+        "vscode" => "Erweiterbarer Code-Editor.",
+        "notepadplusplus" => "Text- & Quellcode-Editor.",
+        "windows-terminal" => "Moderner Terminal-Emulator.",
+        "vlc" => "Spielt praktisch jedes Medienformat.",
+        "mpv" => "Schlanker, skriptbarer Player.",
+        "audacity" => "Audio aufnehmen & schneiden.",
+        "obs-studio" => "Bildschirmaufnahme & Streaming.",
+        "ffmpeg" => "Audio/Video-Konvertierung (CLI).",
+        "handbrake" => "Video transkodieren & rippen.",
+        "inkscape" => "Vektorgrafik-Editor.",
+        "irfanview" => "Schneller Bildbetrachter & -konverter.",
+        "sharex" => "Screenshots, Aufnahmen & Upload.",
+        "sumatrapdf" => "Schneller, schlanker PDF-Reader.",
+        _ => e.summary,
+    }
+}
+
+/// Display name of a category. The stored name stays the folder under `Tools\`,
+/// so tools that are already on a drive keep working in every language.
+pub fn category_label(cat: &str) -> String {
+    if crate::i18n::is_german() {
+        return cat.to_string();
+    }
+    match cat {
+        "Dateien" => "Files",
+        "Sicherheit" => "Security",
+        "Netzwerk" => "Network",
+        "Datenträger" => "Disks",
+        "Entwicklung" => "Development",
+        "Grafik" => "Graphics",
+        "Weitere" => "More",
+        other => other,
+    }
+    .to_string()
+}
+
 pub fn curated() -> &'static [CatalogEntry] {
     &[
         // ── Empfohlen (Hero der Entdecken-Seite = erster Eintrag) ──
-        CatalogEntry { name: "7zip", title: "7-Zip", bucket: "main", category: "Dateien", summary: "Entpackt & packt nahezu jedes Archivformat." },
+        CatalogEntry { name: "7zip", title: "7-Zip", bucket: "main", category: "Dateien", summary: "Unpacks and packs nearly every archive format." },
 
         // ── Browser & Internet ──
-        CatalogEntry { name: "firefox", title: "Firefox", bucket: "extras", category: "Browser", summary: "Datenschutzfreundlicher Standard-Browser." },
-        CatalogEntry { name: "brave", title: "Brave", bucket: "extras", category: "Browser", summary: "Chromium-Browser mit Werbe- & Tracker-Blocker." },
-        CatalogEntry { name: "thunderbird", title: "Thunderbird", bucket: "extras", category: "Browser", summary: "Mail-, Kalender- & Newsreader-Client." },
-        CatalogEntry { name: "qbittorrent", title: "qBittorrent", bucket: "extras", category: "Browser", summary: "Werbefreier BitTorrent-Client." },
-        CatalogEntry { name: "yt-dlp", title: "yt-dlp", bucket: "main", category: "Browser", summary: "Video/Audio von 1000+ Seiten laden (CLI)." },
+        CatalogEntry { name: "firefox", title: "Firefox", bucket: "extras", category: "Browser", summary: "Privacy-friendly standard browser." },
+        CatalogEntry { name: "brave", title: "Brave", bucket: "extras", category: "Browser", summary: "Chromium browser with ad and tracker blocker." },
+        CatalogEntry { name: "thunderbird", title: "Thunderbird", bucket: "extras", category: "Browser", summary: "Mail, calendar and news client." },
+        CatalogEntry { name: "qbittorrent", title: "qBittorrent", bucket: "extras", category: "Browser", summary: "Ad-free BitTorrent client." },
+        CatalogEntry { name: "yt-dlp", title: "yt-dlp", bucket: "main", category: "Browser", summary: "Download video/audio from 1000+ sites (CLI)." },
 
         // ── Dateien & Archive ──
-        CatalogEntry { name: "everything", title: "Everything", bucket: "extras", category: "Dateien", summary: "Sofort-Dateisuche in Echtzeit." },
-        CatalogEntry { name: "winmerge", title: "WinMerge", bucket: "extras", category: "Dateien", summary: "Datei- & Ordnervergleich mit Merge." },
-        CatalogEntry { name: "peazip", title: "PeaZip", bucket: "extras", category: "Dateien", summary: "Archivmanager mit starker Verschlüsselung." },
+        CatalogEntry { name: "everything", title: "Everything", bucket: "extras", category: "Dateien", summary: "Instant real-time file search." },
+        CatalogEntry { name: "winmerge", title: "WinMerge", bucket: "extras", category: "Dateien", summary: "File and folder comparison with merge." },
+        CatalogEntry { name: "peazip", title: "PeaZip", bucket: "extras", category: "Dateien", summary: "Archive manager with strong encryption." },
 
         // ── System-Info & Wartung ──
-        CatalogEntry { name: "hwinfo", title: "HWiNFO", bucket: "extras", category: "System", summary: "Tiefe Hardware-Infos & Live-Sensoren." },
-        CatalogEntry { name: "cpu-z", title: "CPU-Z", bucket: "extras", category: "System", summary: "CPU-, RAM- & Mainboard-Details." },
-        CatalogEntry { name: "gpu-z", title: "GPU-Z", bucket: "extras", category: "System", summary: "Detailinfos zur Grafikkarte." },
-        CatalogEntry { name: "systeminformer", title: "System Informer", bucket: "extras", category: "System", summary: "Prozess- & Handle-Explorer (ex Process Hacker)." },
-        CatalogEntry { name: "bleachbit", title: "BleachBit", bucket: "extras", category: "System", summary: "System aufräumen & Spuren löschen." },
+        CatalogEntry { name: "hwinfo", title: "HWiNFO", bucket: "extras", category: "System", summary: "Deep hardware info and live sensors." },
+        CatalogEntry { name: "cpu-z", title: "CPU-Z", bucket: "extras", category: "System", summary: "CPU, RAM and mainboard details." },
+        CatalogEntry { name: "gpu-z", title: "GPU-Z", bucket: "extras", category: "System", summary: "Detailed graphics card info." },
+        CatalogEntry { name: "systeminformer", title: "System Informer", bucket: "extras", category: "System", summary: "Process and handle explorer (formerly Process Hacker)." },
+        CatalogEntry { name: "bleachbit", title: "BleachBit", bucket: "extras", category: "System", summary: "Clean up the system and erase traces." },
 
         // ── Sicherheit & Verschlüsselung ──
-        CatalogEntry { name: "keepassxc", title: "KeePassXC", bucket: "extras", category: "Sicherheit", summary: "Offline-Passwortmanager, plattformübergreifend." },
-        CatalogEntry { name: "cryptomator", title: "Cryptomator", bucket: "extras", category: "Sicherheit", summary: "Transparente Cloud-Ordner-Verschlüsselung." },
-        CatalogEntry { name: "gnupg", title: "GnuPG", bucket: "main", category: "Sicherheit", summary: "OpenPGP-Signatur & -Verschlüsselung (CLI)." },
-        CatalogEntry { name: "hashcat", title: "hashcat", bucket: "main", category: "Sicherheit", summary: "GPU-beschleunigte Passwort-Recovery." },
-        CatalogEntry { name: "eraser", title: "Eraser", bucket: "extras", category: "Sicherheit", summary: "Dateien sicher überschreiben & löschen." },
+        CatalogEntry { name: "keepassxc", title: "KeePassXC", bucket: "extras", category: "Sicherheit", summary: "Offline password manager, cross-platform." },
+        CatalogEntry { name: "cryptomator", title: "Cryptomator", bucket: "extras", category: "Sicherheit", summary: "Transparent cloud folder encryption." },
+        CatalogEntry { name: "gnupg", title: "GnuPG", bucket: "main", category: "Sicherheit", summary: "OpenPGP signing and encryption (CLI)." },
+        CatalogEntry { name: "hashcat", title: "hashcat", bucket: "main", category: "Sicherheit", summary: "GPU-accelerated password recovery." },
+        CatalogEntry { name: "eraser", title: "Eraser", bucket: "extras", category: "Sicherheit", summary: "Securely overwrite and delete files." },
 
         // ── Netzwerk & Fernzugriff ──
-        CatalogEntry { name: "nmap", title: "Nmap", bucket: "main", category: "Netzwerk", summary: "Netzwerk- & Portscanner mit Service-Erkennung." },
-        CatalogEntry { name: "wireshark", title: "Wireshark", bucket: "extras", category: "Netzwerk", summary: "Netzwerkprotokoll-Analyse." },
-        CatalogEntry { name: "putty", title: "PuTTY", bucket: "extras", category: "Netzwerk", summary: "SSH-, Telnet- & Serial-Client." },
-        CatalogEntry { name: "winscp", title: "WinSCP", bucket: "extras", category: "Netzwerk", summary: "SFTP-, SCP- & FTP-Dateitransfer." },
+        CatalogEntry { name: "nmap", title: "Nmap", bucket: "main", category: "Netzwerk", summary: "Network and port scanner with service detection." },
+        CatalogEntry { name: "wireshark", title: "Wireshark", bucket: "extras", category: "Netzwerk", summary: "Network protocol analysis." },
+        CatalogEntry { name: "putty", title: "PuTTY", bucket: "extras", category: "Netzwerk", summary: "SSH, Telnet and serial client." },
+        CatalogEntry { name: "winscp", title: "WinSCP", bucket: "extras", category: "Netzwerk", summary: "SFTP, SCP and FTP file transfer." },
 
         // ── Datenträger, Boot & Wiederherstellung ──
-        CatalogEntry { name: "rufus", title: "Rufus", bucket: "extras", category: "Datenträger", summary: "Bootfähige USB-Sticks erstellen." },
-        CatalogEntry { name: "ventoy", title: "Ventoy", bucket: "extras", category: "Datenträger", summary: "Multi-ISO-Boot-Stick." },
-        CatalogEntry { name: "etcher", title: "balenaEtcher", bucket: "extras", category: "Datenträger", summary: "Images sicher auf USB/SD schreiben." },
-        CatalogEntry { name: "wiztree", title: "WizTree", bucket: "extras", category: "Datenträger", summary: "Sehr schnelle Speicherplatz-Analyse." },
-        CatalogEntry { name: "testdisk", title: "TestDisk & PhotoRec", bucket: "extras", category: "Datenträger", summary: "Partitionen retten & Dateien wiederherstellen." },
+        CatalogEntry { name: "rufus", title: "Rufus", bucket: "extras", category: "Datenträger", summary: "Create bootable USB drives." },
+        CatalogEntry { name: "ventoy", title: "Ventoy", bucket: "extras", category: "Datenträger", summary: "Multi-ISO boot drive." },
+        CatalogEntry { name: "etcher", title: "balenaEtcher", bucket: "extras", category: "Datenträger", summary: "Write images safely to USB/SD." },
+        CatalogEntry { name: "wiztree", title: "WizTree", bucket: "extras", category: "Datenträger", summary: "Very fast disk space analysis." },
+        CatalogEntry { name: "testdisk", title: "TestDisk & PhotoRec", bucket: "extras", category: "Datenträger", summary: "Rescue partitions and recover files." },
 
         // ── Reverse Engineering & Forensik ──
-        CatalogEntry { name: "ghidra", title: "Ghidra", bucket: "extras", category: "Reverse Engineering", summary: "NSA Reverse-Engineering-Suite – zieht das JDK automatisch mit." },
-        CatalogEntry { name: "imhex", title: "ImHex", bucket: "extras", category: "Reverse Engineering", summary: "Moderner Hex-Editor mit Pattern-Language." },
-        CatalogEntry { name: "x64dbg", title: "x64dbg", bucket: "extras", category: "Reverse Engineering", summary: "Open-Source x64/x32-Debugger für Windows." },
-        CatalogEntry { name: "cutter", title: "Cutter", bucket: "extras", category: "Reverse Engineering", summary: "GUI für Rizin (Reverse Engineering)." },
-        CatalogEntry { name: "dnspy", title: "dnSpy", bucket: "extras", category: "Reverse Engineering", summary: ".NET-Decompiler & -Debugger." },
+        CatalogEntry { name: "ghidra", title: "Ghidra", bucket: "extras", category: "Reverse Engineering", summary: "NSA reverse engineering suite, brings the JDK along automatically." },
+        CatalogEntry { name: "imhex", title: "ImHex", bucket: "extras", category: "Reverse Engineering", summary: "Modern hex editor with a pattern language." },
+        CatalogEntry { name: "x64dbg", title: "x64dbg", bucket: "extras", category: "Reverse Engineering", summary: "Open-source x64/x32 debugger for Windows." },
+        CatalogEntry { name: "cutter", title: "Cutter", bucket: "extras", category: "Reverse Engineering", summary: "GUI for Rizin (reverse engineering)." },
+        CatalogEntry { name: "dnspy", title: "dnSpy", bucket: "extras", category: "Reverse Engineering", summary: ".NET decompiler and debugger." },
 
         // ── Entwicklung, Editoren & CLI ──
-        CatalogEntry { name: "git", title: "Git", bucket: "main", category: "Entwicklung", summary: "Versionsverwaltung." },
-        CatalogEntry { name: "nodejs", title: "Node.js", bucket: "main", category: "Entwicklung", summary: "JavaScript-Runtime." },
-        CatalogEntry { name: "ripgrep", title: "ripgrep", bucket: "main", category: "Entwicklung", summary: "Blitzschnelle rekursive Codesuche." },
-        CatalogEntry { name: "fzf", title: "fzf", bucket: "main", category: "Entwicklung", summary: "Fuzzy-Finder für die Kommandozeile." },
-        CatalogEntry { name: "vscode", title: "VS Code", bucket: "extras", category: "Entwicklung", summary: "Erweiterbarer Code-Editor." },
-        CatalogEntry { name: "notepadplusplus", title: "Notepad++", bucket: "extras", category: "Entwicklung", summary: "Text- & Quellcode-Editor." },
-        CatalogEntry { name: "windows-terminal", title: "Windows Terminal", bucket: "extras", category: "Entwicklung", summary: "Moderner Terminal-Emulator." },
+        CatalogEntry { name: "git", title: "Git", bucket: "main", category: "Entwicklung", summary: "Version control." },
+        CatalogEntry { name: "nodejs", title: "Node.js", bucket: "main", category: "Entwicklung", summary: "JavaScript runtime." },
+        CatalogEntry { name: "ripgrep", title: "ripgrep", bucket: "main", category: "Entwicklung", summary: "Lightning-fast recursive code search." },
+        CatalogEntry { name: "fzf", title: "fzf", bucket: "main", category: "Entwicklung", summary: "Fuzzy finder for the command line." },
+        CatalogEntry { name: "vscode", title: "VS Code", bucket: "extras", category: "Entwicklung", summary: "Extensible code editor." },
+        CatalogEntry { name: "notepadplusplus", title: "Notepad++", bucket: "extras", category: "Entwicklung", summary: "Text and source code editor." },
+        CatalogEntry { name: "windows-terminal", title: "Windows Terminal", bucket: "extras", category: "Entwicklung", summary: "Modern terminal emulator." },
 
         // ── Multimedia & Audio/Video ──
-        CatalogEntry { name: "vlc", title: "VLC", bucket: "extras", category: "Multimedia", summary: "Spielt praktisch jedes Medienformat." },
-        CatalogEntry { name: "mpv", title: "mpv", bucket: "extras", category: "Multimedia", summary: "Schlanker, skriptbarer Player." },
-        CatalogEntry { name: "audacity", title: "Audacity", bucket: "extras", category: "Multimedia", summary: "Audio aufnehmen & schneiden." },
-        CatalogEntry { name: "obs-studio", title: "OBS Studio", bucket: "extras", category: "Multimedia", summary: "Bildschirmaufnahme & Streaming." },
-        CatalogEntry { name: "ffmpeg", title: "FFmpeg", bucket: "main", category: "Multimedia", summary: "Audio/Video-Konvertierung (CLI)." },
-        CatalogEntry { name: "handbrake", title: "HandBrake", bucket: "extras", category: "Multimedia", summary: "Video transkodieren & rippen." },
+        CatalogEntry { name: "vlc", title: "VLC", bucket: "extras", category: "Multimedia", summary: "Plays practically every media format." },
+        CatalogEntry { name: "mpv", title: "mpv", bucket: "extras", category: "Multimedia", summary: "Lean, scriptable player." },
+        CatalogEntry { name: "audacity", title: "Audacity", bucket: "extras", category: "Multimedia", summary: "Record and edit audio." },
+        CatalogEntry { name: "obs-studio", title: "OBS Studio", bucket: "extras", category: "Multimedia", summary: "Screen recording and streaming." },
+        CatalogEntry { name: "ffmpeg", title: "FFmpeg", bucket: "main", category: "Multimedia", summary: "Audio/video conversion (CLI)." },
+        CatalogEntry { name: "handbrake", title: "HandBrake", bucket: "extras", category: "Multimedia", summary: "Transcode and rip video." },
 
         // ── Grafik & Produktivität ──
-        CatalogEntry { name: "inkscape", title: "Inkscape", bucket: "extras", category: "Grafik", summary: "Vektorgrafik-Editor." },
-        CatalogEntry { name: "irfanview", title: "IrfanView", bucket: "extras", category: "Grafik", summary: "Schneller Bildbetrachter & -konverter." },
-        CatalogEntry { name: "sharex", title: "ShareX", bucket: "extras", category: "Grafik", summary: "Screenshots, Aufnahmen & Upload." },
-        CatalogEntry { name: "sumatrapdf", title: "SumatraPDF", bucket: "extras", category: "Grafik", summary: "Schneller, schlanker PDF-Reader." },
+        CatalogEntry { name: "inkscape", title: "Inkscape", bucket: "extras", category: "Grafik", summary: "Vector graphics editor." },
+        CatalogEntry { name: "irfanview", title: "IrfanView", bucket: "extras", category: "Grafik", summary: "Fast image viewer and converter." },
+        CatalogEntry { name: "sharex", title: "ShareX", bucket: "extras", category: "Grafik", summary: "Screenshots, recordings and upload." },
+        CatalogEntry { name: "sumatrapdf", title: "SumatraPDF", bucket: "extras", category: "Grafik", summary: "Fast, lean PDF reader." },
     ]
 }
 
@@ -137,13 +216,13 @@ pub fn raw_url(bucket: &str, name: &str) -> Result<String> {
 fn fetch_manifest(url: &str, name: &str) -> Result<Manifest> {
     let text = net::fetch_text(url)?;
     let json: serde_json::Value =
-        serde_json::from_str(&text).context("Manifest ist kein gültiges JSON")?;
+        serde_json::from_str(&text).context(crate::tr!("manifest is not valid JSON", "Manifest ist kein gültiges JSON"))?;
     parse_manifest(name, &json)
 }
 
 /// Fetch a curated tool's manifest -> (manifest, catalog entry).
 pub fn fetch_named(name: &str) -> Result<(Manifest, &'static CatalogEntry)> {
-    let entry = find(name).ok_or_else(|| anyhow!("'{name}' ist nicht im Katalog: {}", known()))?;
+    let entry = find(name).ok_or_else(|| anyhow!(crate::tr!("'{name}' is not in the catalog: {}", "'{name}' ist nicht im Katalog: {}", known())))?;
     let m = fetch_manifest(&raw_url(entry.bucket, name)?, name)?;
     Ok((m, entry))
 }
@@ -152,7 +231,7 @@ pub fn fetch_named(name: &str) -> Result<(Manifest, &'static CatalogEntry)> {
 pub fn fetch_ref(reference: &str) -> Result<Manifest> {
     let (bucket, name) = resolver::parse_ref(reference);
     if !resolver::valid_tool_name(&name) {
-        return Err(anyhow!("Ungültiger Tool-Name im Verweis: {reference}"));
+        return Err(anyhow!(crate::tr!("invalid tool name in reference: {reference}", "Ungültiger Tool-Name im Verweis: {reference}")));
     }
     fetch_manifest(&raw_url(&bucket, &name)?, &name)
 }
@@ -228,7 +307,7 @@ pub fn install_resolved(
     cancel: &AtomicBool,
 ) -> Result<InstallSummary> {
     if !resolver::valid_tool_name(&main.name) {
-        return Err(anyhow!("Ungültiger Tool-Name: {}", main.name));
+        return Err(anyhow!(crate::tr!("invalid tool name: {}", "Ungültiger Tool-Name: {}", main.name)));
     }
     let main_dir = install_dir(root, category, &main.name);
     // A running tool can't be swapped — say so before a long download.
@@ -242,17 +321,17 @@ pub fn install_resolved(
         let pm = match fetch_ref(&need.reference) {
             Ok(pm) => pm,
             Err(e) => {
-                on(InstallEvent::Phase(&format!("Plugin {} übersprungen: {e}", need.reference)));
+                on(InstallEvent::Phase(&crate::tr!("Plugin {} skipped: {e}", "Plugin {} übersprungen: {e}", need.reference)));
                 continue;
             }
         };
         if dir_nonempty(&pdir) {
-            on(InstallEvent::Phase(&format!("Plugin {} bereits vorhanden – überspringe.", pm.name)));
+            on(InstallEvent::Phase(&crate::tr!("Plugin {} already present, skipping.", "Plugin {} bereits vorhanden – überspringe.", pm.name)));
         } else {
-            on(InstallEvent::Phase(&format!("Plugin für '{}': {}", need.feature, pm.name)));
+            on(InstallEvent::Phase(&crate::tr!("Plugin for '{}': {}", "Plugin für '{}': {}", need.feature, pm.name)));
             let r = install(&pm, root, RUNTIME_CAT, on, cancel)?;
             if let Some(reason) = &r.pending_reason {
-                on(InstallEvent::Phase(&format!("Plugin {} nicht entpackbar: {reason}", pm.name)));
+                on(InstallEvent::Phase(&crate::tr!("Plugin {} cannot be unpacked: {reason}", "Plugin {} nicht entpackbar: {reason}", pm.name)));
                 continue;
             }
             if let Err(e) = fsutil::commit_dir(&r.staging, &pdir, &pm.name) {
@@ -281,9 +360,9 @@ pub fn install_resolved(
             return Err(crate::Cancelled.into());
         }
         if let Some((msi_name, keep)) = ov.nested_msi {
-            on(InstallEvent::Phase("  Entpacke inneres MSI …"));
+            on(InstallEvent::Phase(&crate::tr!("  Unpacking inner MSI …", "  Entpacke inneres MSI …")));
             let msi = find_file(&stage, msi_name, 0)
-                .ok_or_else(|| anyhow!("'{msi_name}' nicht im Paket gefunden"))?;
+                .ok_or_else(|| anyhow!(crate::tr!("'{msi_name}' not found in the package", "'{msi_name}' nicht im Paket gefunden")))?;
             crate::msi::extract_msi_file(&msi, &stage, Some(Path::new(keep)))?;
             // The wrapper only carried the MSI packages — they aren't part of the tool.
             remove_wrapper_msis(&stage);
@@ -302,17 +381,17 @@ pub fn install_resolved(
         // Never report "installiert" for something that can't be started.
         if let Err(problem) = validate_install(&stage, &profile, report.files) {
             let hint = if main.needs_installer || main.innosetup || main.ext == "exe" {
-                " – das Paket braucht ein Setup-Programm, das Maxtrix bewusst nicht ausführt"
+                crate::tr!(". The package needs a setup program, which Maxtrix deliberately does not run", " – das Paket braucht ein Setup-Programm, das Maxtrix bewusst nicht ausführt")
             } else {
-                ""
+                String::new()
             };
-            return Err(anyhow!("{} ist nicht portabel installierbar: {problem}{hint}", main.name));
+            return Err(anyhow!(crate::tr!("{} cannot be installed portably: {problem}{hint}", "{} ist nicht portabel installierbar: {problem}{hint}", main.name)));
         }
         // The tool may have been started during the download.
         fsutil::ensure_not_in_use(&main_dir, &main.name)?;
         let carried = persist::prepare(&stage, old, &main.persist, ov.markers)?;
         if !carried.is_empty() {
-            on(InstallEvent::Phase(&format!("  {} Benutzerdaten-Einträge übernommen", carried.len())));
+            on(InstallEvent::Phase(&crate::tr!("  {} user data entries carried over", "  {} Benutzerdaten-Einträge übernommen", carried.len())));
         }
         std::fs::write(stage.join(LAUNCH_FILE), serde_json::to_vec_pretty(&profile.to_json())?)?;
         write_meta(&stage, &main.name, &main.version, category);
@@ -371,11 +450,11 @@ fn validate_install(dir: &Path, profile: &LaunchProfile, files: usize) -> std::r
             if dir.join(rel).is_file() {
                 Ok(())
             } else {
-                Err(format!("Startdatei '{run}' fehlt nach dem Entpacken"))
+                Err(crate::tr!("start file '{run}' is missing after unpacking", "Startdatei '{run}' fehlt nach dem Entpacken"))
             }
         }
         None if files > 0 => Ok(()),
-        None => Err("es wurden keine Dateien entpackt".into()),
+        None => Err(crate::tr!("no files were unpacked", "es wurden keine Dateien entpackt")),
     }
 }
 
@@ -414,7 +493,7 @@ pub fn fetch_manifest_from_repo(repo: &str, file_path: &str, name: &str) -> Resu
             }
         }
     }
-    Err(anyhow!("Manifest nicht abrufbar: {repo}/{file_path}"))
+    Err(anyhow!(crate::tr!("manifest not available: {repo}/{file_path}", "Manifest nicht abrufbar: {repo}/{file_path}")))
 }
 
 /// Install a tool from any Scoop bucket (a full-text search result).
@@ -428,7 +507,7 @@ pub fn install_from_repo(
     cancel: &AtomicBool,
 ) -> Result<InstallSummary> {
     if !resolver::valid_tool_name(name) {
-        return Err(anyhow!("Ungültiger Tool-Name: {name}"));
+        return Err(anyhow!(crate::tr!("invalid tool name: {name}", "Ungültiger Tool-Name: {name}")));
     }
     let main = fetch_manifest_from_repo(repo, file_path, name)?;
     install_resolved(&main, root, category, on, cancel)
@@ -584,7 +663,7 @@ pub fn launch_tool(root: &Path, category: &str, name: &str) -> Result<()> {
     } else {
         // No profile: best-guess an executable and use its absolute path.
         let target = find_run_target(&dir)
-            .ok_or_else(|| anyhow!("keine startbare Datei in {} gefunden", dir.display()))?;
+            .ok_or_else(|| anyhow!(crate::tr!("no launchable file found in {}", "keine startbare Datei in {} gefunden", dir.display())))?;
         let abs = std::fs::canonicalize(&target).unwrap_or(target);
         let abs = abs.to_string_lossy().trim_start_matches(r"\\?\").to_string();
         (abs, None, Vec::new(), Vec::new())
@@ -593,7 +672,7 @@ pub fn launch_tool(root: &Path, category: &str, name: &str) -> Result<()> {
     // Profiles from older versions may lack a target (GUI apps that only list
     // `shortcuts`) — fall back to the best-guess executable.
     let run = if run.is_empty() {
-        let target = find_run_target(&dir).ok_or_else(|| anyhow!("nichts Startbares für {name}"))?;
+        let target = find_run_target(&dir).ok_or_else(|| anyhow!(crate::tr!("nothing to launch for {name}", "nichts Startbares für {name}")))?;
         let abs = std::fs::canonicalize(&target).unwrap_or(target);
         abs.to_string_lossy().trim_start_matches(r"\\?\").to_string()
     } else {
@@ -631,7 +710,7 @@ pub fn launch_tool(root: &Path, category: &str, name: &str) -> Result<()> {
         parts.push(std::env::var("PATH").unwrap_or_default());
         cmd.env("PATH", parts.join(";"));
     }
-    cmd.spawn().with_context(|| format!("Start von {name} fehlgeschlagen"))?;
+    cmd.spawn().with_context(|| crate::tr!("failed to start {name}", "Start von {name} fehlgeschlagen"))?;
     Ok(())
 }
 
@@ -724,7 +803,7 @@ pub fn open_in_explorer(root: &Path, category: &str, name: &str) -> Result<()> {
     Command::new("explorer")
         .arg(&dir)
         .spawn()
-        .context("Explorer konnte nicht geöffnet werden")?;
+        .context(crate::tr!("could not open Explorer", "Explorer konnte nicht geöffnet werden"))?;
     Ok(())
 }
 
@@ -813,8 +892,7 @@ pub fn find_run_target(dir: &Path) -> Option<PathBuf> {
 /// "updatechecker.exe".
 fn is_excluded_word(name: &str, word: &str) -> bool {
     // Fast path: name starts with the word and the next char is a boundary.
-    if name.starts_with(word) {
-        let after = &name[word.len()..];
+    if let Some(after) = name.strip_prefix(word) {
         if after.is_empty() || after.starts_with('_') || after.starts_with('-') || after.starts_with('.') {
             return true;
         }

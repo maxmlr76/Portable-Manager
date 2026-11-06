@@ -112,7 +112,7 @@ fn in_use(e: &io::Error) -> bool {
 }
 
 fn in_use_error(name: &str) -> anyhow::Error {
-    anyhow!("{name} läuft noch oder eine Datei daraus ist geöffnet – bitte schließen und erneut versuchen")
+    anyhow!(crate::tr!("{name} is still running or one of its files is open. Close it and try again", "{name} läuft noch oder eine Datei daraus ist geöffnet – bitte schließen und erneut versuchen"))
 }
 
 /// A program or library inside `dir` that is currently loaded. Renaming the
@@ -155,9 +155,9 @@ pub fn ensure_not_in_use(dir: &Path, name: &str) -> Result<()> {
     }
     let probe = dir.with_file_name(format!("{WORK_PREFIX}probe-{}-{}", std::process::id(), seq()));
     match fs::rename(dir, &probe) {
-        Ok(()) => fs::rename(&probe, dir).map_err(|e| anyhow!("Ordner {} nicht zurückbenannt: {e}", probe.display())),
+        Ok(()) => fs::rename(&probe, dir).map_err(|e| anyhow!(crate::tr!("folder {} could not be renamed back: {e}", "Ordner {} nicht zurückbenannt: {e}", probe.display()))),
         Err(e) if in_use(&e) => Err(in_use_error(name)),
-        Err(e) => Err(anyhow!("Ordner {} nicht zugreifbar: {e}", dir.display())),
+        Err(e) => Err(anyhow!(crate::tr!("folder {} is not accessible: {e}", "Ordner {} nicht zugreifbar: {e}", dir.display()))),
     }
 }
 
@@ -169,13 +169,13 @@ pub fn commit_dir(staging: &Path, target: &Path, name: &str) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
     if !target.exists() {
-        return fs::rename(staging, target).map_err(|e| anyhow!("Installation nicht abschließbar: {e}"));
+        return fs::rename(staging, target).map_err(|e| anyhow!(crate::tr!("could not finish the installation: {e}", "Installation nicht abschließbar: {e}")));
     }
     if busy_file(target, 0).is_some() {
         return Err(in_use_error(name));
     }
     let old =target.with_file_name(format!("{WORK_PREFIX}old-{}-{}", std::process::id(), seq()));
-    fs::rename(target, &old).map_err(|e| if in_use(&e) { in_use_error(name) } else { anyhow!("alte Version nicht verschiebbar: {e}") })?;
+    fs::rename(target, &old).map_err(|e| if in_use(&e) { in_use_error(name) } else { anyhow!(crate::tr!("could not move the old version: {e}", "alte Version nicht verschiebbar: {e}")) })?;
     match fs::rename(staging, target) {
         Ok(()) => {
             let _ = fs::remove_dir_all(&old);
@@ -183,7 +183,7 @@ pub fn commit_dir(staging: &Path, target: &Path, name: &str) -> Result<()> {
         }
         Err(e) => {
             let _ = fs::rename(&old, target);
-            Err(anyhow!("neue Version nicht einsetzbar (alte wiederhergestellt): {e}"))
+            Err(anyhow!(crate::tr!("could not put the new version in place (old one restored): {e}", "neue Version nicht einsetzbar (alte wiederhergestellt): {e}")))
         }
     }
 }
@@ -278,8 +278,8 @@ mod tests {
         // Like a running exe: opened without sharing.
         let lock = fs::OpenOptions::new().read(true).share_mode(0).open(target.join("tool.exe")).unwrap();
         let e = ensure_not_in_use(&target, "Tool").unwrap_err().to_string();
-        assert!(e.contains("läuft noch"), "{e}");
-        assert!(commit_dir(&stage, &target, "Tool").unwrap_err().to_string().contains("läuft noch"));
+        assert!(e.contains("still running"), "{e}");
+        assert!(commit_dir(&stage, &target, "Tool").unwrap_err().to_string().contains("still running"));
         assert!(target.join("tool.exe").is_file() && stage.is_dir());
         drop(lock);
         fs::remove_dir_all(&t).unwrap();
@@ -305,7 +305,7 @@ mod tests {
         let busy = ensure_not_in_use(&target, "Tool");
         child.kill().unwrap();
         let _ = child.wait();
-        assert!(busy.unwrap_err().to_string().contains("läuft noch"));
+        assert!(busy.unwrap_err().to_string().contains("still running"));
         assert!(ensure_not_in_use(&target, "Tool").is_ok(), "free again after the program ended");
         fs::remove_dir_all(&t).unwrap();
     }

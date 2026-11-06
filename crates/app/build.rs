@@ -28,8 +28,12 @@ fn main() {
 
     // Force the dark variant of Slint's std widgets (scrollbars etc.) — otherwise
     // they follow a light Windows theme and look out of place in the dark UI.
-    let config = slint_build::CompilerConfiguration::new().with_style("fluent-dark".into());
-    slint_build::compile_with_config("ui/app.slint", config).expect("Slint-UI konnte nicht kompiliert werden");
+    let config = slint_build::CompilerConfiguration::new()
+        .with_style("fluent-dark".into())
+        .with_bundled_translations("lang")
+        .with_default_translation_context(slint_build::DefaultTranslationContext::None);
+    println!("cargo:rerun-if-changed=lang");
+    slint_build::compile_with_config("ui/app.slint", config).expect("Slint UI failed to compile");
 
     // Embed the Maxtrix app icon + version metadata into the .exe (Windows only).
     // Needs rc.exe from the Windows SDK; if it's missing we warn and continue so the
@@ -45,7 +49,7 @@ fn main() {
         res.set("OriginalFilename", "PortableManager.exe");
         res.set("InternalName", "PortableManager");
         if let Err(e) = res.compile() {
-            println!("cargo:warning=Icon/Metadaten nicht eingebettet (rc.exe fehlt?): {e}");
+            println!("cargo:warning=icon/metadata not embedded (rc.exe missing?): {e}");
         }
     }
 }

@@ -1,0 +1,75 @@
+MAXTRIX PORTABLE MANAGER
+==========================
+
+Ein portabler Verwalter fuer deine portablen Tools. Laeuft direkt vom Stick,
+ohne Installation.
+
+INHALT DIESES ORDNERS
+---------------------
+  PortableManager.exe   Die App. Doppelklick zum Starten.
+  vendor\7-zip\           Mitgeliefertes 7-Zip (entpackt Installer / .7z beim Download).
+  Tools\                  Hier liegen deine Tools (je Kategorie ein Unterordner).
+  LIESMICH.txt            Diese Datei.
+  THIRD-PARTY-NOTICES.txt Hinweise zu mitgelieferter Software (7-Zip, Slint, Schriften).
+  licenses\               Lizenztexte. Maxtrix selbst ist MIT, Name und Logo ausgenommen.
+
+AUF DEN STICK BRINGEN
+---------------------
+  Kopiere den GESAMTEN Inhalt dieses Ordners in die Wurzel deines Sticks,
+  z. B. nach E:\  -- sodass dort E:\PortableManager.exe, E:\vendor\ und
+  E:\Tools\ liegen. Dann PortableManager.exe doppelklicken.
+
+  Der Laufwerksbuchstabe ist egal -- die App merkt sich Pfade relativ zum Stick.
+
+BENUTZUNG
+---------
+  - "Entdecken": kuratierte Tools installieren. Klick auf eine Karte zeigt vor
+    dem Download Quelle, Pruefsumme, Abhaengigkeiten und Groesse.
+  - "Installiert": alles, was auf dem Stick liegt -- Starten / Ordner oeffnen /
+    Entfernen. Auch Tools, die du selbst nach Tools\<Kategorie>\<Name>\
+    hineinkopierst, tauchen hier automatisch auf.
+  - "Updates": zeigt an, wenn eine neuere Version verfuegbar ist.
+  - "Meine Listen" (links): eigene Sammlungen. Tools ueber das Listen-Symbol
+    oben rechts auf einer Karte hinzufuegen oder das Symbol auf eine Liste
+    ziehen. Der Pfeil vor einer Liste klappt ihre Tools direkt links auf.
+  - Kommandozeilen-Tools (z. B. ripgrep, GnuPG) haben "Terminal" statt
+    "Starten": es oeffnet sich eine Konsole im Tool-Ordner mit dem Tool im PATH.
+  - Tastatur: Strg+F = Suche, Esc = Dialog/Detailansicht schliessen.
+
+HINWEISE
+--------
+  - Downloads kommen von den offiziellen Hersteller-Seiten und werden per
+    Pruefsumme (SHA256 o. ae.) verifiziert.
+  - Ist die EXE nicht mit einem vertrauenswuerdigen Zertifikat signiert, meldet
+    sich beim ersten Start evtl. Windows SmartScreen ("Weitere Informationen"
+    -> "Trotzdem ausfuehren"). Das ist bei Eigenbau-Programmen normal. Zum
+    Signieren siehe packaging\SIGNING.md.
+  - Manche Tools brauchen zusaetzliche Treiber (z. B. Nmap: Npcap) -- das kann
+    kein portabler Launcher ersetzen.
+  - Tray-Symbol: Linksklick oeffnet oder schliesst den Schnellstart, Rechtsklick
+    zeigt das Menue.
+  - Beim ersten Schliessen fragt die App, ob sie im Infobereich (Tray)
+    weiterlaufen oder beenden soll. Aendern: Rechtsklick aufs Tray-Icon ->
+    "Beim Schliessen im Infobereich bleiben". Ein erneuter Doppelklick auf die
+    EXE holt das laufende Fenster zurueck.
+  - Bleibt das Fenster auf einem PC weiss/leer (Grafiktreiber): Rechtsklick
+    aufs Tray-Icon -> "Einfache Grafik" anhaken, App beenden und neu starten.
+  - VOR DEM AKTUALISIEREN die App ueber das Tray-Icon beenden, sonst ist die
+    alte EXE gesperrt und wird beim Kopieren nicht ersetzt.
+  - Pakete, die nur ueber ein Setup-Programm installierbar sind, laesst Maxtrix
+    bewusst aus -- sie wuerden sich auf dem PC statt auf dem Stick einrichten.
+  - Einstellungen und Daten der Tools (z. B. Browser-Profile, VS-Code-Daten)
+    liegen im jeweiligen Tool-Ordner auf dem Stick und bleiben bei Updates
+    erhalten.
+  - Installationen und Updates lassen sich mit "Abbrechen" stoppen. Ein
+    abgebrochenes oder fehlgeschlagenes Update aendert nichts -- die bisherige
+    Version bleibt unveraendert startbar.
+  - Ein Tool, das gerade laeuft, kann nicht aktualisiert werden -- erst das
+    Tool schliessen, dann "Aktualisieren".
+
+HAFTUNG
+-------
+  Die Software kommt ohne Gewaehrleistung (siehe licenses\LICENSE.txt). Sicherheits-
+  Tools wie Nmap oder hashcat nur auf eigenen Systemen oder mit Erlaubnis einsetzen.
+
+Version 0.1.1
