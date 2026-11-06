@@ -157,7 +157,6 @@ pub fn fetch_ref(reference: &str) -> Result<Manifest> {
     fetch_manifest(&raw_url(&bucket, &name)?, &name)
 }
 
-///
 /// Last line of defence: whatever `name` holds, the result stays one folder below the
 /// category. Names from outside are rejected earlier by `resolver::valid_tool_name`;
 /// folder names found on disk may contain spaces and stay as they are.

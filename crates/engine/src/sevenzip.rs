@@ -29,7 +29,8 @@ pub fn find_7z() -> Option<PathBuf> {
             }
         }
     }
-    // 3. bundled relative to the working directory (dev / app started from its dir)
+    // 3. Development only: in a release this would run a planted 7z.exe from any folder.
+    #[cfg(debug_assertions)]
     for cand in ["vendor/7-zip/7z.exe", "vendor/7-zip/7za.exe"] {
         let p = PathBuf::from(cand);
         if p.is_file() {
