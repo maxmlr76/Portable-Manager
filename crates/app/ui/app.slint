@@ -1,6 +1,6 @@
 import { AboutSlint, ScrollView } from "std-widgets.slint";
 import { Mx } from "tokens.slint";
-// Marken-Schriften: Erst dieser Import bettet sie ein (ohne ihn: Ersatzschrift).
+// Brand fonts: only this import embeds them (without it: fallback font).
 import "Saira.ttf";
 import "Audiowide-Regular.ttf";
 
@@ -20,8 +20,8 @@ struct ToolItem {
     star: bool,         // header: draw the star glyph
     icon: image,        // native icon from the tool's .exe (installed only)
     has-icon: bool,
-    reinstallable: bool, // has a source (catalog/search) → "Neu installieren" possible
-    cli: bool,          // command-line tool → "Terminal" instead of "Starten"
+    reinstallable: bool, // has a source (catalog/search) → "Reinstall" possible
+    cli: bool,          // command-line tool → "Terminal" instead of "Launch"
     glyph: string,      // header: icon kind of the category
     count: int,         // header: number of tools in the section
 }
@@ -159,6 +159,8 @@ component Icon inherits Rectangle {
             ? "M4 5 H20 V19 H4 Z M8.5 10 a1.5 1.5 0 1 0 0.01 0 M4 16 L9 12 L13 15 L16 12 L20 16"
             : root.kind == "addlist"
             ? "M4 6 H14 M4 12 H12 M4 18 H12 M18 14 V22 M14 18 H22"
+            : root.kind == "import"
+            ? "M12 4 V14 M8 10 L12 14 L16 10 M5 15 V20 H19 V15"
             : root.kind == "check"
             ? "M5 12 L10 17 L19 7"
             : root.kind == "chevron-right"
@@ -173,7 +175,7 @@ component Icon inherits Rectangle {
     }
 }
 
-// Kennzeichnungs-Label im Datenblatt-Stil: Versalien, gesperrt, leise.
+// Data-sheet style label: capitals, letter-spaced, quiet.
 component MxLabel inherits Text {
     color: Mx.faint;
     font-size: 10.5px;
@@ -182,8 +184,8 @@ component MxLabel inherits Text {
     vertical-alignment: center;
 }
 
-// Passermarken an den vier Ecken eines Panels (Datenblatt-Detail der Website).
-// Liegt frei über dem Panel und nimmt am Layout nicht teil.
+// Registration marks at the four corners of a panel (data-sheet detail of the website).
+// Floats above the panel and takes no part in the layout.
 component Ticks inherits Rectangle {
     in property <length> tick: 10px;
     in property <color> tint: Mx.steel;
@@ -198,8 +200,8 @@ component Ticks inherits Rectangle {
     Rectangle { x: root.width - 1px; y: root.height - root.tick; width: 1px; height: root.tick; background: root.tint; }
 }
 
-// Teile-Kette: das Motiv der Marke, auch auf der Website (offen → läuft → geprüft).
-// Ersetzt jede Fortschritts- und Füllstandsanzeige.
+// Chain of bits: the brand motif, as on the website (open → running → verified).
+// Used for every progress and fill indicator.
 component Bits inherits HorizontalLayout {
     in property <float> value: 0;
     in property <int> parts: 20;
@@ -212,14 +214,14 @@ component Bits inherits HorizontalLayout {
         border-radius: 1.5px;
         background: root.value * root.parts >= i + 1 ? Mx.bit-done
             : (root.value * root.parts > i ? Mx.bit-moving : Mx.bit-empty);
-        // Bewusst KEINE Animation: Der Wert ändert sich beim Download sehr oft, jede
-        // Änderung startete sie neu — die Teile hingen dem echten Stand weit hinterher.
+        // Deliberately NO animation: the value changes very often while downloading and
+        // each change restarted it, so the bits lagged far behind the real progress.
     }
 }
 
-// Lichtstreifen beim Hovern — ein Durchlauf, wie auf den Website-Buttons. Beim
-// Verlassen springt er unsichtbar zurück. Braucht Clipping mit runden Ecken,
-// deshalb nur mit GPU-Renderer (der Aufrufer prüft Render.soft).
+// Light sweep on hover, one pass as on the website buttons. On leave it jumps back
+// invisibly. Needs clipping with rounded corners, so GPU renderer only (the caller
+// checks Render.soft).
 component Sweep inherits Rectangle {
     in property <bool> on;
     in property <color> shine: Mx.shine;
@@ -229,7 +231,7 @@ component Sweep inherits Rectangle {
         width: parent.width * 0.4;
         x: root.on ? parent.width * 1.3 : parent.width * -0.6;
         animate x { duration: root.on ? 650ms : 0ms; easing: ease-in-out; }
-        // Ausblenden über Weiß mit Alpha 0: `transparent` ist Schwarz und dunkelte das Metall ab.
+        // Fade via white with alpha 0: `transparent` is black and darkened the metal.
         background: @linear-gradient(105deg, root.shine.with-alpha(0) 0%, root.shine 50%, root.shine.with-alpha(0) 100%);
     }
 }
@@ -245,7 +247,7 @@ component ChromeButton inherits Rectangle {
         ? (ta.pressed ? Mx.chrome-flat-pressed : (ta.has-hover ? Mx.chrome-flat-hover : Mx.chrome-flat))
         : (ta.pressed ? Mx.chrome-btn-pressed : Mx.chrome-btn);
     animate background { duration: Mx.dur-fast; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
-    // Licht und Schatten (no layout shift).
+    // Light and shadow (no layout shift).
     drop-shadow-color: Render.soft ? transparent : (ta.has-hover ? Mx.tint-22 : Mx.shadow);
     drop-shadow-blur: Render.soft ? 0px : (ta.has-hover ? 18px : 10px);
     drop-shadow-offset-y: Render.soft ? 0px : (ta.has-hover ? 2px : 4px);
@@ -335,9 +337,9 @@ component Chip inherits Rectangle {
     }
 }
 
-// Status-Kennzeichen: die Form trägt die Aussage, nicht die Farbe — wie auf der
-// Website. Installiert = voller Punkt, Update = Ring, läuft = gestrichelt.
-// Nur Fehler nutzen die Warnfarbe.
+// Status mark: the shape carries the meaning, not the colour, as on the website.
+// Installed = filled dot, update = ring, running = dashed. Only errors use the
+// warning colour.
 component StatusPill inherits Rectangle {
     in property <string> status;
     property <bool> bad: root.status == "error" || root.status == "broken";
@@ -436,7 +438,7 @@ component NavItem inherits Rectangle {
     ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
-// One row of a spec sheet ("Kennblatt"): label left, value right, hairline below.
+// One row of a spec sheet ("data sheet"): label left, value right, hairline below.
 component SpecRow inherits VerticalLayout {
     in property <string> label;
     in property <string> value;
@@ -492,8 +494,8 @@ component ActionCluster inherits VerticalLayout {
         if root.item.reinstallable : ChromeButton { label: @tr("Reinstall"); min-width: 112px; clicked => { root.install(root.item.id); } }
         GhostButton { label: @tr("Remove"); min-width: 80px; danger-hover: true; clicked => { root.remove(root.item.id); } }
     }
-    // Fortschritt als Teile-Kette + Abbrechen (der Status-Text steht in der
-    // Kartenzeile darüber). Die Leiste muss auch ins 2-Spalten-Raster passen.
+    // Progress as a chain of bits + Cancel (the status text is in the card line
+    // above). The bar must also fit into the 2-column grid.
     if root.item.status == "installing" : HorizontalLayout {
         spacing: 10px;
         VerticalLayout {
@@ -503,9 +505,9 @@ component ActionCluster inherits VerticalLayout {
         }
         GhostButton { label: @tr("Cancel"); min-width: 84px; clicked => { root.cancel(root.item.id); } }
     }
-    // Mindestbreiten bewusst knapp: In GridCards (2-Spalten-Raster, ~250px
-    // Content-Breite) muss die Leiste komplett hineinpassen — sonst treibt sie
-    // die Karten-Mindestbreite und bläht das Raster (s. GridCard-Kommentar).
+    // Minimum widths kept tight on purpose: in GridCards (2-column grid, ~250px of
+    // content) the bar must fit completely, or it drives the card's minimum width
+    // and inflates the grid (see the GridCard comment).
     if root.item.status == "installed" : HorizontalLayout {
         spacing: 6px;
         // Command-line tools would only flash a console window — open a terminal instead.
@@ -566,8 +568,8 @@ component ListHandle inherits Rectangle {
     }
 }
 
-// Karten-Grundform der Website (`.tool`): senkrechter Graphit-Verlauf, feine Linie,
-// beim Hovern kräftigere Linie, Schatten und eine Chrome-Kante, die von links einläuft.
+// Base card shape of the website (`.tool`): vertical graphite gradient, fine line;
+// on hover a stronger line, a shadow and a chrome edge that runs in from the left.
 component CardFrame inherits Rectangle {
     in property <bool> hover;
     in property <length> radius: Mx.radius-l;
@@ -712,7 +714,7 @@ component FeatureCard inherits CardFrame {
     }
 }
 
-// Compact vertical card for the 2-column "Kacheln" view.
+// Compact vertical card for the 2-column grid view.
 component GridCard inherits CardFrame {
     in property <ToolItem> item;
     callback install(int);
@@ -726,12 +728,11 @@ component GridCard inherits CardFrame {
     callback addlist(int);
     callback dragmove(int, string, string, bool, image, length, length);
     callback dragend();
-    // WICHTIG: Keine inhaltsgetriebenen Breiten nach außen melden! Die elidierten
-    // einzeiligen Texte (Detail-/Summary-Zeile) melden in dieser Slint-Version
-    // ihre volle Naturbreite als min-width. Sobald der Update-Check Detail-Zeilen
-    // liefert, wuchs dadurch die Karten-Mindestbreite -> Pair-Zeile -> ScrollView
-    // blähte sich über den Viewport auf und die Karten rutschten ungleichmäßig
-    // aus dem Bild. Die Breite kommt ausschließlich vom HorizontalLayout-Stretch.
+    // IMPORTANT: never report content-driven widths upwards! In this Slint version the
+    // elided one-line texts (detail/summary line) report their full natural width as
+    // min-width. Once the update check delivered detail lines, the card's minimum
+    // width grew -> pair row -> the ScrollView swelled beyond the viewport and the
+    // cards slid unevenly out of view. The width comes only from the layout stretch.
     preferred-width: 0px;
     min-width: 0px;
     hover: ta.has-hover;
@@ -753,11 +754,11 @@ component GridCard inherits CardFrame {
                 HorizontalLayout { Chip { label: root.item.category; } Rectangle { horizontal-stretch: 1; } }
             }
         }
-        // min-width: 0 bei ALLEN elidierten Texten — s. Kommentar am Komponenten-Kopf.
+        // min-width: 0 on ALL elided texts, see the comment at the top of the component.
         Text { text: root.item.summary; color: Mx.muted; font-size: 12px; min-height: 32px; max-height: 32px; wrap: word-wrap; overflow: elide; min-width: 0px; }
-        // Status-Zeile ist IMMER im Layout (auch leer), damit jede GridCard exakt
-        // dieselbe Höhe hat — sonst stehen Karten mit Update-/Install-Status tiefer
-        // und das Raster verrutscht. So ist sie auch nie ein leerer Streifen.
+        // The status line is ALWAYS in the layout (even empty), so every GridCard has
+        // exactly the same height; otherwise cards with an update/install status sit
+        // lower and the grid shifts. This way it is never an empty strip either.
         HorizontalLayout {
             spacing: 7px; alignment: start;
             min-height: 20px; max-height: 20px;
@@ -850,7 +851,7 @@ component CliCard inherits Rectangle {
     }
 }
 
-// Kapitel-Kopf wie auf der Website: Linie, Nummer, Titel — rechts die Anzahl.
+// Chapter head as on the website: line, number, title, the count on the right.
 component HeaderRow inherits Rectangle {
     in property <string> number;
     in property <string> title;
@@ -894,9 +895,9 @@ component FilterChip inherits Rectangle {
     ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
-// Technisches Raster im Hintergrund (Website: 96er-Hauptlinien, 24er-Feinraster),
-// das nach unten ausläuft, oben ein Lichtfleck. Liegt hinter dem Inhalt, Karten
-// sind deckend. Statisch, kostet also nichts, solange nichts neu gezeichnet wird.
+// Technical grid in the background (website: 96 px main lines, 24 px fine grid)
+// that fades out downwards, with a light spot on top. It lies behind the content;
+// cards are opaque. Static, so it costs nothing while nothing is redrawn.
 component TechGrid inherits Rectangle {
     clip: true;
     for i in ceil(root.width / 24px) : Rectangle {
@@ -938,6 +939,14 @@ export component MainWindow inherits Window {
     in property <string> build-tag;
     in property <string> language: "en";
     callback set-language(string);
+    // App self-update card in the sidebar ("" = hidden).
+    in property <string> app-update-text;
+    in property <string> app-update-action;   // button label ("" = none)
+    callback app-update-clicked();
+    // Share lists.
+    callback import-list();
+    callback export-list();
+    callback install-list-missing();
     // True while any install/update runs (the drive glow then circles).
     in property <bool> busy: false;
     // Confirmation for destructive actions (filled by Rust, accepted via confirm-accept).
@@ -989,7 +998,7 @@ export component MainWindow inherits Window {
     in property <string> view-subtitle: "";
     in property <bool> verified-only: true;
     callback toggle-verified();
-    in property <string> search-sort: "relevanz";
+    in property <string> search-sort: "relevance";
     in property <int> search-page-size: 20;
     in property <bool> search-has-more: false;
     in property <bool> search-loading-more: false;
@@ -1007,10 +1016,10 @@ export component MainWindow inherits Window {
     callback select-view(string);
     callback search-changed(string);
 
-    // Short confirmation after an action ("7-Zip installiert", "Firefox → Pentest").
+    // Short confirmation after an action ("7-Zip installed", "Firefox → Pentest").
     in property <string> toast-text;
     in property <string> toast-kind: "ok";   // "ok" | "error" | "info"
-    in property <string> toast-action;       // e.g. "Rückgängig" ("" = none)
+    in property <string> toast-action;       // e.g. "Undo" ("" = none)
     in-out property <bool> toast-visible: false;
     callback toast-action-clicked();
 
@@ -1051,7 +1060,7 @@ export component MainWindow inherits Window {
     changed list-menu-open => { if (!self.list-menu-open) { key-handler.focus(); } }
     changed drawer-open => { if (!self.drawer-open) { key-handler.focus(); } }
 
-    // Stick-root picker state.
+    // Drive-root picker state.
     in-out property <bool> picker-open: false;
     in property <[DriveOption]> drives;
     in property <string> app-folder;
@@ -1127,6 +1136,13 @@ export component MainWindow inherits Window {
                         }
                     }
                     Rectangle { horizontal-stretch: 1; }
+                    Rectangle {
+                        width: 22px; height: 20px; border-radius: 6px;
+                        accessible-role: button; accessible-label: @tr("Import list");
+                        background: imp-ta.has-hover ? Mx.tint-07 : transparent;
+                        Icon { kind: "import"; tint: imp-ta.has-hover ? Mx.text : Mx.muted; width: 14px; height: 14px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                        imp-ta := TouchArea { mouse-cursor: pointer; clicked => { root.import-list(); } }
+                    }
                     Rectangle {
                         width: 22px; height: 20px; border-radius: 6px;
                         background: addl-ta.has-hover ? Mx.tint-07 : transparent;
@@ -1226,7 +1242,7 @@ export component MainWindow inherits Window {
                                                 property <bool> armed: mrow-ta.has-hover || mx-ta.has-hover;
                                                 width: 18px; height: 18px; border-radius: 5px;
                                                 background: mx-ta.has-hover ? Mx.danger-soft : transparent;
-                                                // Status per Form: voller Punkt = auf dem Stick (Klick startet), Ring = nicht installiert.
+                                                // Status by shape: filled dot = on the drive (click launches), ring = not installed.
                                                 Rectangle {
                                                     visible: !parent.armed;
                                                     width: 7px; height: 7px; border-radius: 3.5px;
@@ -1275,7 +1291,21 @@ export component MainWindow inherits Window {
                 }
                 Rectangle { height: 8px; }
 
-                // Drive card (click to choose the stick / target folder) — chrome glow ring
+                // A newer app version: offer it, show the download, then ask to restart.
+                if root.app-update-text != "" : Rectangle {
+                    height: au-lay.preferred-height;
+                    border-radius: Mx.radius-l;
+                    background: Render.soft ? Mx.card-flat : Mx.card;
+                    border-width: 1px; border-color: Mx.line-strong;
+                    au-lay := VerticalLayout {
+                        padding: 12px; spacing: 8px;
+                        Text { text: root.app-update-text; color: Mx.text; font-size: 11.5px; wrap: word-wrap; }
+                        if root.app-update-action != "" : ChromeButton { label: root.app-update-action; clicked => { root.app-update-clicked(); } }
+                    }
+                }
+                if root.app-update-text != "" : Rectangle { height: 8px; }
+
+                // Drive card (click to choose the drive / target folder) — chrome glow ring
                 Rectangle {
                     height: 94px; border-radius: Mx.radius-l;
                     clip: true;
@@ -1336,12 +1366,11 @@ export component MainWindow inherits Window {
         }
 
         // ── Content ──
-        // horizontal-stretch: 1 ist DIE Stelle, die das Fenster zusammenhält:
-        // Ohne ihn bekommt die Spalte im Root-HorizontalLayout (Sidebar hat
-        // feste 224px) ihre INHALTSGETRIEBENE Preferred-Breite. Wachsen die
-        // Kartentexte (async Update-Check), wächst die Spalte über den Slot
-        // hinaus und das Root-Layout läuft rechts aus dem festen Fenster —
-        // die rechte Karte der 2-Spalten-Reihen hing aus dem Bild.
+        // horizontal-stretch: 1 is THE line that holds the window together. Without it
+        // the column in the root HorizontalLayout (the sidebar is a fixed 224px) gets
+        // its CONTENT-DRIVEN preferred width. When the card texts grow (async update
+        // check) the column grows beyond its slot and the root layout runs out of the
+        // fixed window on the right; the right card of 2-column rows hung out of view.
         contentcol := VerticalLayout {
             horizontal-stretch: 1;
             // Toolbar
@@ -1356,7 +1385,7 @@ export component MainWindow inherits Window {
                         Text { text: root.view-subtitle; color: Mx.faint; font-size: 11.5px; }
                     }
                     Rectangle { horizontal-stretch: 1; }
-                    // View toggle: Liste (1 Spalte) / Kacheln (2 Spalten)
+                    // View toggle: list (1 column) / grid (2 columns)
                     VerticalLayout {
                         alignment: center;
                         Rectangle {
@@ -1450,17 +1479,17 @@ export component MainWindow inherits Window {
             }
 
             // List (catalog / installed / updates / search / categories)
-            // horizontal-stretch: 1 ist Pflicht: ohne ihn bekommt der ScrollView
-            // seine INHALTSGETRIEBENE Preferred-Breite (lange Kartentexte) statt
-            // der Slot-Breite aus dem Fenster-Layout und läuft 200px+ über den
-            // sichtbaren Bereich hinaus (die Karten rutschten aus dem Bild).
+            // horizontal-stretch: 1 is required: without it the ScrollView gets its
+            // CONTENT-DRIVEN preferred width (long card texts) instead of the slot width
+            // from the window layout and runs 200px+ past the visible area (the cards
+            // slid out of view).
             if root.current-view != "cli" : sv := ScrollView {
                 vertical-stretch: 1;
                 horizontal-stretch: 1;
                 VerticalLayout {
                     padding: 18px; spacing: 9px;
-                    // Content-Breite hart am Viewport kappen — sonst bläht der
-                    // ScrollView den Inhalt auf dessen Preferred-Breite auf.
+                    // Cap the content width hard at the viewport, or the ScrollView
+                    // inflates the content to its preferred width.
                     width: sv.visible-width;
 
                     // Search controls: sort + page size (only in the search view).
@@ -1471,8 +1500,8 @@ export component MainWindow inherits Window {
                             border-radius: Mx.radius; border-width: 1px; border-color: Mx.line-strong;
                             HorizontalLayout {
                                 padding: 3px; spacing: 2px;
-                                SegItem { label: @tr("Relevance"); active: root.search-sort == "relevanz"; clicked => { root.set-sort("relevanz"); } }
-                                SegItem { label: @tr("Stars"); active: root.search-sort == "sterne"; clicked => { root.set-sort("sterne"); } }
+                                SegItem { label: @tr("Relevance"); active: root.search-sort == "relevance"; clicked => { root.set-sort("relevance"); } }
+                                SegItem { label: @tr("Stars"); active: root.search-sort == "stars"; clicked => { root.set-sort("stars"); } }
                                 SegItem { label: "Name"; active: root.search-sort == "name"; clicked => { root.set-sort("name"); } }
                             }
                         }
@@ -1489,7 +1518,7 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    // Category filter (Entdecken): chips wrap into lines computed in Rust.
+                    // Category filter (Discover): chips wrap into lines computed in Rust.
                     if root.current-view == "discover" && root.chip-rows.length > 0 : VerticalLayout {
                         spacing: 7px; padding-bottom: 2px;
                         for cr in root.chip-rows : HorizontalLayout {
@@ -1503,23 +1532,44 @@ export component MainWindow inherits Window {
                     }
 
                     for row in root.rows : Rectangle {
-                        // KEINE explizite Breite hier setzen: width: würde auch
-                        // min/preferred auf denselben Wert ziehen und mit dem
-                        // ScrollView/Fenster eine Preferred-Size-Rückkopplung
-                        // bilden (Content wuchs 600 -> 780+). preferred-width: 0
-                        // kappt die Meldung inhaltsgetriebener Breiten nach oben;
-                        // die echte Breite kommt vom VerticalLayout-Stretch.
+                        // Do NOT set an explicit width here: width: would also pull
+                        // min/preferred to the same value and form a preferred-size
+                        // feedback loop with the ScrollView/window (content grew
+                        // 600 -> 780+). preferred-width: 0 stops content-driven widths
+                        // from being reported upwards; the real width comes from the
+                        // VerticalLayout stretch.
                         preferred-width: 0px;
-                        // Feste Zeilenhöhen == exaktes Inhaltsbudget der Karten
-                        // (GridCard: 28 Padding + 44 Header + 32 Summary + 20 Status
-                        // + 34 Aktionen + 4x8 Spacing = 190). NIEMALS kleiner machen,
-                        // sonst läuft Karteninhalt über die Zeile hinaus.
+                        // Fixed row heights == the exact content budget of the cards
+                        // (GridCard: 28 padding + 44 header + 32 summary + 20 status
+                        // + 34 actions + 4x8 spacing = 190). NEVER make them smaller,
+                        // or card content runs past the row.
                         height: row.kind == "header" ? 42px
-                            : row.kind == "updateall" ? 62px
+                            : row.kind == "updateall" || row.kind == "listbar" ? 62px
                             : row.kind == "feature" ? 130px
                             : row.kind == "pair" ? 190px
                             : 98px;
                         if row.kind == "header" : HeaderRow { number: row.a.mono; title: row.a.name; star: row.a.star; glyph: row.a.glyph; count: row.a.count; }
+                        if row.kind == "listbar" : Rectangle {
+                            border-radius: Mx.radius-l;
+                            background: Render.soft ? Mx.card-flat : Mx.card;
+                            border-width: 1px; border-color: Mx.line-strong;
+                            HorizontalLayout {
+                                padding-left: 16px; padding-right: 16px; spacing: 10px;
+                                VerticalLayout {
+                                    alignment: center; spacing: 2px; horizontal-stretch: 1;
+                                    Text { text: row.a.title; color: Mx.text; font-size: 15px; font-weight: 600; overflow: elide; min-width: 0; }
+                                    Text { text: row.a.summary; color: Mx.muted; font-size: 11px; overflow: elide; min-width: 0; }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    GhostButton { label: @tr("Export…"); min-width: 96px; clicked => { root.export-list(); } }
+                                }
+                                if row.a.count > 0 : VerticalLayout {
+                                    alignment: center;
+                                    ChromeButton { label: @tr("Install missing ({})", row.a.count); min-width: 168px; clicked => { root.install-list-missing(); } }
+                                }
+                            }
+                        }
                         if row.kind == "updateall" : Rectangle {
                             border-radius: Mx.radius-l;
                             background: Render.soft ? Mx.card-flat : Mx.card;
@@ -1577,12 +1627,11 @@ export component MainWindow inherits Window {
                                 root.dragging = false; root.drag-hover-list = "";
                             }
                         }
-                        // Zwei Karten nebeneinander via HorizontalLayout + gleichem
-                        // Stretch. Der Knackpunkt ist GridCards preferred-width: 0px
-                        // (s. dort): Ohne ihn verteilt der Solver die Breite nach den
-                        // natürlichen Inhaltsbreiten (2:1 bzw. Karte B auf null) UND
-                        // die Preferred-Size der Zeile bläht den ScrollView-Content
-                        // über den Viewport hinaus auf.
+                        // Two cards side by side via HorizontalLayout + equal stretch.
+                        // The crux is GridCard's preferred-width: 0px (see there):
+                        // without it the solver splits the width by the natural content
+                        // widths (2:1, or card B down to zero) AND the row's preferred
+                        // size inflates the ScrollView content beyond the viewport.
                         if row.kind == "pair" : HorizontalLayout {
                             spacing: 12px;
                             GridCard {
@@ -1662,7 +1711,7 @@ export component MainWindow inherits Window {
                 vertical-stretch: 1;
                 VerticalLayout {
                     padding: 18px; spacing: 12px;
-                    // IT-Konsole intro
+                    // IT console intro
                     Rectangle {
                         height: 92px; border-radius: Mx.radius-l;
                         background: Render.soft ? Mx.card-flat : Mx.card;
@@ -1779,7 +1828,7 @@ export component MainWindow inherits Window {
         }
       }
 
-      // ── Stick-root picker ──
+      // ── Drive-root picker ──
       if root.picker-open : Rectangle {
         background: Mx.scrim;
         opacity: 0.55;
@@ -1921,7 +1970,7 @@ export component MainWindow inherits Window {
         }
       }
 
-      // ── Über: Lizenzen und der von der Slint-Lizenz verlangte Hinweis ──
+      // ── About: licenses and the notice required by the Slint license ──
       if root.about-open : Rectangle {
         background: Mx.scrim; opacity: 0.6;
         TouchArea { clicked => { root.about-open = false; } }

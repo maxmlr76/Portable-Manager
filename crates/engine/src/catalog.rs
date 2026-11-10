@@ -97,29 +97,78 @@ pub fn summary(e: &CatalogEntry) -> &'static str {
     }
 }
 
-/// Display name of a category. The stored name stays the folder under `Tools\`,
-/// so tools that are already on a drive keep working in every language.
+/// Category folders under `Tools\` were German before 0.1.2: (old, new).
+pub const LEGACY_CATEGORIES: &[(&str, &str)] = &[
+    ("Dateien", "Files"),
+    ("Sicherheit", "Security"),
+    ("Netzwerk", "Network"),
+    ("Datenträger", "Disks"),
+    ("Entwicklung", "Development"),
+    ("Grafik", "Graphics"),
+    ("Weitere", "More"),
+];
+
+/// Display name of a category. Folder names are English; German shows the
+/// translation. Unknown (user-made) folders keep their own name.
 pub fn category_label(cat: &str) -> String {
     if crate::i18n::is_german() {
-        return cat.to_string();
+        if let Some((de, _)) = LEGACY_CATEGORIES.iter().find(|(_, en)| *en == cat) {
+            return de.to_string();
+        }
     }
-    match cat {
-        "Dateien" => "Files",
-        "Sicherheit" => "Security",
-        "Netzwerk" => "Network",
-        "Datenträger" => "Disks",
-        "Entwicklung" => "Development",
-        "Grafik" => "Graphics",
-        "Weitere" => "More",
-        other => other,
+    cat.to_string()
+}
+
+/// Move tools from the old German category folders into the English ones, once
+/// per drive. A tool whose new folder already exists, or that is in use, stays
+/// where it is (and is tried again at the next start). Launch profiles hold
+/// drive-relative paths with the category in them, so they are rewritten too.
+/// Returns how many tools were moved.
+pub fn migrate_legacy_categories(root: &Path) -> usize {
+    let tools = root.join("Tools");
+    let mut moved = 0;
+    for (de, en) in LEGACY_CATEGORIES {
+        let old_dir = tools.join(de);
+        let Ok(entries) = std::fs::read_dir(&old_dir) else { continue };
+        let new_dir = tools.join(en);
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let target = new_dir.join(&name);
+            if target.exists() || std::fs::create_dir_all(&new_dir).is_err() {
+                continue;
+            }
+            if std::fs::rename(entry.path(), &target).is_err() {
+                continue;
+            }
+            moved += 1;
+            let profile = target.join(LAUNCH_FILE);
+            if let Ok(text) = std::fs::read_to_string(&profile) {
+                let fixed = rewrite_category(&text, de, en);
+                if fixed != text {
+                    let _ = std::fs::write(&profile, fixed);
+                }
+            }
+        }
+        // Remove the old folder once it is empty.
+        let _ = std::fs::remove_dir(&old_dir);
     }
-    .to_string()
+    moved
+}
+
+/// Replace the category segment of `Tools\<old>\` paths (as written in JSON, with
+/// escaped or plain backslashes and with forward slashes).
+fn rewrite_category(text: &str, old: &str, new: &str) -> String {
+    let mut out = text.to_string();
+    for sep in ["\\\\", "\\", "/"] {
+        out = out.replace(&format!("Tools{sep}{old}{sep}"), &format!("Tools{sep}{new}{sep}"));
+    }
+    out
 }
 
 pub fn curated() -> &'static [CatalogEntry] {
     &[
-        // ── Empfohlen (Hero der Entdecken-Seite = erster Eintrag) ──
-        CatalogEntry { name: "7zip", title: "7-Zip", bucket: "main", category: "Dateien", summary: "Unpacks and packs nearly every archive format." },
+        // ── Recommended (hero of the Discover page = first entry) ──
+        CatalogEntry { name: "7zip", title: "7-Zip", bucket: "main", category: "Files", summary: "Unpacks and packs nearly every archive format." },
 
         // ── Browser & Internet ──
         CatalogEntry { name: "firefox", title: "Firefox", bucket: "extras", category: "Browser", summary: "Privacy-friendly standard browser." },
@@ -129,9 +178,9 @@ pub fn curated() -> &'static [CatalogEntry] {
         CatalogEntry { name: "yt-dlp", title: "yt-dlp", bucket: "main", category: "Browser", summary: "Download video/audio from 1000+ sites (CLI)." },
 
         // ── Dateien & Archive ──
-        CatalogEntry { name: "everything", title: "Everything", bucket: "extras", category: "Dateien", summary: "Instant real-time file search." },
-        CatalogEntry { name: "winmerge", title: "WinMerge", bucket: "extras", category: "Dateien", summary: "File and folder comparison with merge." },
-        CatalogEntry { name: "peazip", title: "PeaZip", bucket: "extras", category: "Dateien", summary: "Archive manager with strong encryption." },
+        CatalogEntry { name: "everything", title: "Everything", bucket: "extras", category: "Files", summary: "Instant real-time file search." },
+        CatalogEntry { name: "winmerge", title: "WinMerge", bucket: "extras", category: "Files", summary: "File and folder comparison with merge." },
+        CatalogEntry { name: "peazip", title: "PeaZip", bucket: "extras", category: "Files", summary: "Archive manager with strong encryption." },
 
         // ── System-Info & Wartung ──
         CatalogEntry { name: "hwinfo", title: "HWiNFO", bucket: "extras", category: "System", summary: "Deep hardware info and live sensors." },
@@ -140,25 +189,25 @@ pub fn curated() -> &'static [CatalogEntry] {
         CatalogEntry { name: "systeminformer", title: "System Informer", bucket: "extras", category: "System", summary: "Process and handle explorer (formerly Process Hacker)." },
         CatalogEntry { name: "bleachbit", title: "BleachBit", bucket: "extras", category: "System", summary: "Clean up the system and erase traces." },
 
-        // ── Sicherheit & Verschlüsselung ──
-        CatalogEntry { name: "keepassxc", title: "KeePassXC", bucket: "extras", category: "Sicherheit", summary: "Offline password manager, cross-platform." },
-        CatalogEntry { name: "cryptomator", title: "Cryptomator", bucket: "extras", category: "Sicherheit", summary: "Transparent cloud folder encryption." },
-        CatalogEntry { name: "gnupg", title: "GnuPG", bucket: "main", category: "Sicherheit", summary: "OpenPGP signing and encryption (CLI)." },
-        CatalogEntry { name: "hashcat", title: "hashcat", bucket: "main", category: "Sicherheit", summary: "GPU-accelerated password recovery." },
-        CatalogEntry { name: "eraser", title: "Eraser", bucket: "extras", category: "Sicherheit", summary: "Securely overwrite and delete files." },
+        // ── Security & encryption ──
+        CatalogEntry { name: "keepassxc", title: "KeePassXC", bucket: "extras", category: "Security", summary: "Offline password manager, cross-platform." },
+        CatalogEntry { name: "cryptomator", title: "Cryptomator", bucket: "extras", category: "Security", summary: "Transparent cloud folder encryption." },
+        CatalogEntry { name: "gnupg", title: "GnuPG", bucket: "main", category: "Security", summary: "OpenPGP signing and encryption (CLI)." },
+        CatalogEntry { name: "hashcat", title: "hashcat", bucket: "main", category: "Security", summary: "GPU-accelerated password recovery." },
+        CatalogEntry { name: "eraser", title: "Eraser", bucket: "extras", category: "Security", summary: "Securely overwrite and delete files." },
 
         // ── Netzwerk & Fernzugriff ──
-        CatalogEntry { name: "nmap", title: "Nmap", bucket: "main", category: "Netzwerk", summary: "Network and port scanner with service detection." },
-        CatalogEntry { name: "wireshark", title: "Wireshark", bucket: "extras", category: "Netzwerk", summary: "Network protocol analysis." },
-        CatalogEntry { name: "putty", title: "PuTTY", bucket: "extras", category: "Netzwerk", summary: "SSH, Telnet and serial client." },
-        CatalogEntry { name: "winscp", title: "WinSCP", bucket: "extras", category: "Netzwerk", summary: "SFTP, SCP and FTP file transfer." },
+        CatalogEntry { name: "nmap", title: "Nmap", bucket: "main", category: "Network", summary: "Network and port scanner with service detection." },
+        CatalogEntry { name: "wireshark", title: "Wireshark", bucket: "extras", category: "Network", summary: "Network protocol analysis." },
+        CatalogEntry { name: "putty", title: "PuTTY", bucket: "extras", category: "Network", summary: "SSH, Telnet and serial client." },
+        CatalogEntry { name: "winscp", title: "WinSCP", bucket: "extras", category: "Network", summary: "SFTP, SCP and FTP file transfer." },
 
-        // ── Datenträger, Boot & Wiederherstellung ──
-        CatalogEntry { name: "rufus", title: "Rufus", bucket: "extras", category: "Datenträger", summary: "Create bootable USB drives." },
-        CatalogEntry { name: "ventoy", title: "Ventoy", bucket: "extras", category: "Datenträger", summary: "Multi-ISO boot drive." },
-        CatalogEntry { name: "etcher", title: "balenaEtcher", bucket: "extras", category: "Datenträger", summary: "Write images safely to USB/SD." },
-        CatalogEntry { name: "wiztree", title: "WizTree", bucket: "extras", category: "Datenträger", summary: "Very fast disk space analysis." },
-        CatalogEntry { name: "testdisk", title: "TestDisk & PhotoRec", bucket: "extras", category: "Datenträger", summary: "Rescue partitions and recover files." },
+        // ── Disks, boot & recovery ──
+        CatalogEntry { name: "rufus", title: "Rufus", bucket: "extras", category: "Disks", summary: "Create bootable USB drives." },
+        CatalogEntry { name: "ventoy", title: "Ventoy", bucket: "extras", category: "Disks", summary: "Multi-ISO boot drive." },
+        CatalogEntry { name: "etcher", title: "balenaEtcher", bucket: "extras", category: "Disks", summary: "Write images safely to USB/SD." },
+        CatalogEntry { name: "wiztree", title: "WizTree", bucket: "extras", category: "Disks", summary: "Very fast disk space analysis." },
+        CatalogEntry { name: "testdisk", title: "TestDisk & PhotoRec", bucket: "extras", category: "Disks", summary: "Rescue partitions and recover files." },
 
         // ── Reverse Engineering & Forensik ──
         CatalogEntry { name: "ghidra", title: "Ghidra", bucket: "extras", category: "Reverse Engineering", summary: "NSA reverse engineering suite, brings the JDK along automatically." },
@@ -168,13 +217,13 @@ pub fn curated() -> &'static [CatalogEntry] {
         CatalogEntry { name: "dnspy", title: "dnSpy", bucket: "extras", category: "Reverse Engineering", summary: ".NET decompiler and debugger." },
 
         // ── Entwicklung, Editoren & CLI ──
-        CatalogEntry { name: "git", title: "Git", bucket: "main", category: "Entwicklung", summary: "Version control." },
-        CatalogEntry { name: "nodejs", title: "Node.js", bucket: "main", category: "Entwicklung", summary: "JavaScript runtime." },
-        CatalogEntry { name: "ripgrep", title: "ripgrep", bucket: "main", category: "Entwicklung", summary: "Lightning-fast recursive code search." },
-        CatalogEntry { name: "fzf", title: "fzf", bucket: "main", category: "Entwicklung", summary: "Fuzzy finder for the command line." },
-        CatalogEntry { name: "vscode", title: "VS Code", bucket: "extras", category: "Entwicklung", summary: "Extensible code editor." },
-        CatalogEntry { name: "notepadplusplus", title: "Notepad++", bucket: "extras", category: "Entwicklung", summary: "Text and source code editor." },
-        CatalogEntry { name: "windows-terminal", title: "Windows Terminal", bucket: "extras", category: "Entwicklung", summary: "Modern terminal emulator." },
+        CatalogEntry { name: "git", title: "Git", bucket: "main", category: "Development", summary: "Version control." },
+        CatalogEntry { name: "nodejs", title: "Node.js", bucket: "main", category: "Development", summary: "JavaScript runtime." },
+        CatalogEntry { name: "ripgrep", title: "ripgrep", bucket: "main", category: "Development", summary: "Lightning-fast recursive code search." },
+        CatalogEntry { name: "fzf", title: "fzf", bucket: "main", category: "Development", summary: "Fuzzy finder for the command line." },
+        CatalogEntry { name: "vscode", title: "VS Code", bucket: "extras", category: "Development", summary: "Extensible code editor." },
+        CatalogEntry { name: "notepadplusplus", title: "Notepad++", bucket: "extras", category: "Development", summary: "Text and source code editor." },
+        CatalogEntry { name: "windows-terminal", title: "Windows Terminal", bucket: "extras", category: "Development", summary: "Modern terminal emulator." },
 
         // ── Multimedia & Audio/Video ──
         CatalogEntry { name: "vlc", title: "VLC", bucket: "extras", category: "Multimedia", summary: "Plays practically every media format." },
@@ -184,11 +233,11 @@ pub fn curated() -> &'static [CatalogEntry] {
         CatalogEntry { name: "ffmpeg", title: "FFmpeg", bucket: "main", category: "Multimedia", summary: "Audio/video conversion (CLI)." },
         CatalogEntry { name: "handbrake", title: "HandBrake", bucket: "extras", category: "Multimedia", summary: "Transcode and rip video." },
 
-        // ── Grafik & Produktivität ──
-        CatalogEntry { name: "inkscape", title: "Inkscape", bucket: "extras", category: "Grafik", summary: "Vector graphics editor." },
-        CatalogEntry { name: "irfanview", title: "IrfanView", bucket: "extras", category: "Grafik", summary: "Fast image viewer and converter." },
-        CatalogEntry { name: "sharex", title: "ShareX", bucket: "extras", category: "Grafik", summary: "Screenshots, recordings and upload." },
-        CatalogEntry { name: "sumatrapdf", title: "SumatraPDF", bucket: "extras", category: "Grafik", summary: "Fast, lean PDF reader." },
+        // ── Graphics & productivity ──
+        CatalogEntry { name: "inkscape", title: "Inkscape", bucket: "extras", category: "Graphics", summary: "Vector graphics editor." },
+        CatalogEntry { name: "irfanview", title: "IrfanView", bucket: "extras", category: "Graphics", summary: "Fast image viewer and converter." },
+        CatalogEntry { name: "sharex", title: "ShareX", bucket: "extras", category: "Graphics", summary: "Screenshots, recordings and upload." },
+        CatalogEntry { name: "sumatrapdf", title: "SumatraPDF", bucket: "extras", category: "Graphics", summary: "Fast, lean PDF reader." },
     ]
 }
 
@@ -626,7 +675,7 @@ pub fn remove_tool(root: &Path, category: &str, name: &str) -> Result<()> {
     let dir = install_dir(root, category, name);
     if dir.exists() {
         std::fs::remove_dir_all(&dir)
-            .with_context(|| format!("Entfernen fehlgeschlagen: {}", dir.display()))?;
+            .with_context(|| crate::tr!("remove failed: {}", "Entfernen fehlgeschlagen: {}", dir.display()))?;
     }
     Ok(())
 }
@@ -964,14 +1013,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn old_german_folders_move_and_profiles_follow() {
+        let root = std::env::temp_dir().join(format!("mx-migrate-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let tool = root.join("Tools").join("Dateien").join("7zip");
+        std::fs::create_dir_all(&tool).unwrap();
+        std::fs::write(tool.join(LAUNCH_FILE), r#"{"run":"${STICK}\Tools\Dateien\7zip\7zFM.exe"}"#).unwrap();
+        // A tool that already exists in the new folder is left alone.
+        std::fs::create_dir_all(root.join("Tools").join("Grafik").join("inkscape")).unwrap();
+        std::fs::create_dir_all(root.join("Tools").join("Graphics").join("inkscape")).unwrap();
+
+        assert_eq!(migrate_legacy_categories(&root), 1);
+        let moved = root.join("Tools").join("Files").join("7zip");
+        let profile = std::fs::read_to_string(moved.join(LAUNCH_FILE)).unwrap();
+        assert!(profile.contains(r"Tools\Files\7zip"), "{profile}");
+        assert!(!root.join("Tools").join("Dateien").exists());
+        assert!(root.join("Tools").join("Grafik").join("inkscape").exists());
+        assert_eq!(migrate_legacy_categories(&root), 0);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn titles_and_cli_entries_match_the_catalog() {
         for e in curated() {
             assert!(!e.title.is_empty(), "{}", e.name);
         }
         // The CLI view takes its folders from the catalog — every entry must be in it
-        // (stale hard-coded categories once broke "Terminal öffnen" for hashcat/ripgrep).
+        // (stale hard-coded categories once broke "Open terminal" for hashcat/ripgrep).
         for t in crate::cli::cli_tools() {
-            assert!(find(t.name).is_some(), "CLI-Werkzeug {} fehlt im Katalog", t.name);
+            assert!(find(t.name).is_some(), "CLI tool {} is missing from the catalog", t.name);
         }
         assert_eq!(display_name("notepadplusplus"), "Notepad++");
         assert_eq!(display_name("7zip"), "7-Zip");

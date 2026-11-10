@@ -31,6 +31,13 @@ USAGE
   - "Updates": shows when a newer version is available.
   - "My lists" (left): your own collections. Add tools with the list icon at the
     top right of a card, or drag that icon onto a list.
+  - Share a list: open it and click "Export...". On another stick, import the
+    file with the arrow icon next to "My lists", then "Install missing".
+    Tools come only from the built-in catalog, never from the file.
+  - App updates: when a newer Portable Manager is released, a card in the
+    sidebar offers it. The download is checked before anything is replaced;
+    your Tools folder and settings stay as they are. Turn the check off in the
+    tray menu ("Check for app updates").
   - Command-line tools (e.g. ripgrep, GnuPG) have "Terminal" instead of "Launch":
     a console opens in the tool folder with the tool on PATH.
   - Keyboard: Ctrl+F = search, Esc = close dialog or details.

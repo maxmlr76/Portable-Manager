@@ -1,7 +1,7 @@
 # Assembles the stick-ready layout into dist\PortableManager\.
 # Run:  cargo build --release -p maxtrix-app   (once), then this script.
-# Optional Signierung: -Pfx <datei> [-Password <pw>] | -Thumbprint <hash> | -SelfSigned
-# -OutDir <ordner>: anderes Ziel statt dist (z. B. wenn die App gerade aus dist laeuft).
+# Optional signing: -Pfx <file> [-Password <pw>] | -Thumbprint <hash> | -SelfSigned
+# -OutDir <folder>: another target instead of dist (e.g. when the app is running from dist).
 param(
   [string]$Pfx,
   [string]$Password,
@@ -18,16 +18,16 @@ $OutDir = [IO.Path]::GetFullPath($OutDir, (Get-Location).Path)
 $dist = Join-Path $OutDir "PortableManager"
 
 if (-not (Test-Path $rel)) {
-    throw "Release-Build fehlt: $rel  ->  cargo build --release -p maxtrix-app"
+    throw "Release build missing: $rel  ->  cargo build --release -p maxtrix-app"
 }
 
-# Der Zielordner wird komplett neu angelegt. Wird er schon benutzt (Einstellungen, Tools),
-# abbrechen statt diese Daten zu loeschen.
+# The target folder is created from scratch. If it is in use (settings, tools),
+# stop instead of deleting that data.
 if (Test-Path $dist) {
     $inUse = (Test-Path (Join-Path $dist ".maxtrix-config.json")) -or
         @(Get-ChildItem (Join-Path $dist "Tools") -Directory -ErrorAction SilentlyContinue).Count -gt 0
     if ($inUse) {
-        throw "$dist wird benutzt (Einstellungen oder Tools darin). Anderes Ziel mit -OutDir waehlen."
+        throw "$dist is in use (settings or tools inside). Choose another target with -OutDir."
     }
     Remove-Item -Recurse -Force $dist
 }
@@ -54,7 +54,7 @@ Copy-Item (Join-Path $root "crates\app\ui\OFL-Audiowide.txt") $licenses
 Set-Content (Join-Path $dist "Tools\_your-tools-go-here.txt") `
     "Tools installed through the app are stored here under <category>\<tool>\."
 
-# Optional: EXE signieren, bevor sie ins Zip wandert.
+# Optional: sign the EXE before it goes into the zip.
 $exe = Join-Path $dist "PortableManager.exe"
 $sign = Join-Path $PSScriptRoot "sign.ps1"
 if ($Pfx) {
@@ -74,7 +74,7 @@ Compress-Archive -Path $dist -DestinationPath $zip -Force
 $exeMb = [math]::Round((Get-Item (Join-Path $dist "PortableManager.exe")).Length / 1MB, 1)
 $zipMb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Output "PortableManager.exe : $exeMb MB"
-Write-Output "Paket (zip)           : $zipMb MB  ->  $zip"
-Write-Output "Ordner                : $dist"
-Write-Output "--- Inhalt ---"
+Write-Output "Package (zip)         : $zipMb MB  ->  $zip"
+Write-Output "Folder                : $dist"
+Write-Output "--- Contents ---"
 Get-ChildItem -Recurse $dist | ForEach-Object { $_.FullName.Substring($dist.Length + 1) }

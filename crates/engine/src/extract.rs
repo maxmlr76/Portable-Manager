@@ -16,7 +16,7 @@ pub fn extract_zip_file(archive: &Path, target: &Path, extract_dir: Option<&Path
 
 /// Uses `enclosed_name` to reject path traversal (zip-slip).
 fn extract_zip<R: Read + Seek>(reader: R, target: &Path, extract_dir: Option<&Path>) -> Result<usize> {
-    let mut archive = zip::ZipArchive::new(reader).context("ZIP-Archiv unlesbar")?;
+    let mut archive = zip::ZipArchive::new(reader).context(crate::tr!("cannot read the ZIP archive", "ZIP-Archiv unlesbar"))?;
     fs::create_dir_all(target)?;
     let mut written = 0usize;
 

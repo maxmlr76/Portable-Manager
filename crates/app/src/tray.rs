@@ -55,6 +55,12 @@ mod imp {
         let keep = crate::close_action().as_deref() != Some("quit");
         let mi_keep = CheckMenuItem::new(&maxtrix_engine::tr!("Stay in the notification area when closing", "Beim Schließen im Infobereich bleiben"), true, keep, None);
         // Rescue when the window stays blank/white (GPU driver): software renderer.
+        let mi_upd = CheckMenuItem::new(
+            &maxtrix_engine::tr!("Check for app updates", "Nach App-Updates suchen"),
+            true,
+            crate::update_check_enabled(),
+            None,
+        );
         let mi_soft = CheckMenuItem::new(
             &maxtrix_engine::tr!("Simple graphics (for display errors, after restart)", "Einfache Grafik (bei Anzeigefehlern, ab Neustart)"),
             true,
@@ -66,6 +72,7 @@ mod imp {
         menu.append(&PredefinedMenuItem::separator()).ok()?;
         menu.append(&mi_keep).ok()?;
         menu.append(&mi_soft).ok()?;
+        menu.append(&mi_upd).ok()?;
         menu.append(&PredefinedMenuItem::separator()).ok()?;
         menu.append(&mi_about).ok()?;
         menu.append(&mi_quit).ok()?;
@@ -75,6 +82,7 @@ mod imp {
         let id_quit = mi_quit.id().clone();
         let id_keep = mi_keep.id().clone();
         let id_soft = mi_soft.id().clone();
+        let id_upd = mi_upd.id().clone();
 
         let tray = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
@@ -98,6 +106,7 @@ mod imp {
                 mi_about.set_text(maxtrix_engine::tr!("About Maxtrix Portable Manager", "Über Maxtrix Portable Manager"));
                 mi_quit.set_text(maxtrix_engine::tr!("Quit", "Beenden"));
                 mi_keep.set_text(maxtrix_engine::tr!("Stay in the notification area when closing", "Beim Schließen im Infobereich bleiben"));
+                mi_upd.set_text(maxtrix_engine::tr!("Check for app updates", "Nach App-Updates suchen"));
                 mi_soft.set_text(maxtrix_engine::tr!("Simple graphics (for display errors, after restart)", "Einfache Grafik (bei Anzeigefehlern, ab Neustart)"));
             }
             while let Ok(ev) = MenuEvent::receiver().try_recv() {
@@ -112,6 +121,8 @@ mod imp {
                 } else if ev.id == id_keep {
                     // The menu toggles the check mark itself; store the new state.
                     crate::set_close_to_tray(mi_keep.is_checked());
+                } else if ev.id == id_upd {
+                    crate::set_update_check(mi_upd.is_checked());
                 } else if ev.id == id_soft {
                     crate::set_soft_render(mi_soft.is_checked());
                 }

@@ -32,6 +32,14 @@ BENUTZUNG
   - "Meine Listen" (links): eigene Sammlungen. Tools ueber das Listen-Symbol
     oben rechts auf einer Karte hinzufuegen oder das Symbol auf eine Liste
     ziehen. Der Pfeil vor einer Liste klappt ihre Tools direkt links auf.
+  - Liste weitergeben: Liste oeffnen, "Exportieren..." klicken. Auf einem
+    anderen Stick die Datei ueber das Pfeil-Symbol neben "Meine Listen"
+    importieren, dann "Fehlende installieren". Die Tools kommen nur aus dem
+    eingebauten Katalog, nie aus der Datei.
+  - App-Updates: Erscheint ein neuerer Portable Manager, bietet ihn eine Karte
+    in der Seitenleiste an. Der Download wird vor dem Ersetzen geprueft; der
+    Tools-Ordner und die Einstellungen bleiben unveraendert. Abschalten im
+    Tray-Menue ("Nach App-Updates suchen").
   - Kommandozeilen-Tools (z. B. ripgrep, GnuPG) haben "Terminal" statt
     "Starten": es oeffnet sich eine Konsole im Tool-Ordner mit dem Tool im PATH.
   - Tastatur: Strg+F = Suche, Esc = Dialog/Detailansicht schliessen.

@@ -16,6 +16,8 @@ pub mod resolver;
 pub mod install;
 pub mod catalog;
 pub mod cli;
+pub mod lists;
+pub mod selfupdate;
 pub mod search;
 pub mod drives;
 

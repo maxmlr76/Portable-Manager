@@ -49,6 +49,16 @@ mod imp {
         event: HANDLE,
     }
 
+    // Closing the handles frees the lock, so a restarted app is the first instance again.
+    impl Drop for InstanceGuard {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self._mutex);
+                CloseHandle(self.event);
+            }
+        }
+    }
+
     impl InstanceGuard {
         /// True once for every later launch that asked us to come to the front.
         pub fn show_requested(&self) -> bool {

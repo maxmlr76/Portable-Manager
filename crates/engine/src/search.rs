@@ -58,7 +58,7 @@ pub fn search_page(query: &str, skip: usize, top: usize) -> Result<SearchPage> {
         .set("api-key", API_KEY)
         .set("Content-Type", "application/json")
         .send_string(&body)
-        .context("ScoopSearch-Anfrage fehlgeschlagen")?
+        .context(crate::tr!("ScoopSearch request failed", "ScoopSearch-Anfrage fehlgeschlagen"))?
         .into_string()?;
 
     let json: Value = serde_json::from_str(&text).context(crate::tr!("invalid ScoopSearch response", "ScoopSearch-Antwort ungültig"))?;

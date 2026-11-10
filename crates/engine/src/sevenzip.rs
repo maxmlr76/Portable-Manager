@@ -75,7 +75,7 @@ pub fn extract_7z_file(archive: &Path, dest: &Path, extract_dir: Option<&Path>, 
         }
         let output = cmd
             .output()
-            .with_context(|| format!("7-Zip-Aufruf fehlgeschlagen ({})", seven.display()))?;
+            .with_context(|| crate::tr!("running 7-Zip failed ({})", "7-Zip-Aufruf fehlgeschlagen ({})", seven.display()))?;
 
         // Exit codes: 0 = ok, 1 = warning (non-fatal), >=2 = fatal.
         let code = output.status.code().unwrap_or(-1);

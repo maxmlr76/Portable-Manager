@@ -1,18 +1,18 @@
 <#
-  sign.ps1 - Authenticode-Signierung der PortableManager.exe.
+  sign.ps1 - Authenticode signing of PortableManager.exe.
 
-  Signieren allein entfernt die SmartScreen-Warnung NICHT sofort. Was hilft:
-    * EV-Zertifikat (Hardware-Token/HSM)  -> SmartScreen sofort sauber.
-    * OV-Zertifikat                       -> SmartScreen erst nach etwas "Reputation".
-    * Azure Trusted Signing (~10 $/Monat) -> wie OV, ohne Hardware-Token.
-    * Selbstsigniert (-SelfSigned)        -> NUR fuer interne Tests; auf fremden PCs
-                                             weiterhin SmartScreen (Zertifikat ist dort
-                                             nicht vertrauenswuerdig).
+  Signing alone does NOT remove the SmartScreen warning right away. What helps:
+    * EV certificate (hardware token/HSM) -> SmartScreen clean right away.
+    * OV certificate                      -> SmartScreen only after some "reputation".
+    * Microsoft Artifact Signing          -> like OV, without a hardware token.
+    * Self-signed (-SelfSigned)           -> ONLY for internal tests; other PCs keep
+                                             showing SmartScreen (the certificate is not
+                                             trusted there).
 
-  Beispiele:
-    pwsh packaging\sign.ps1 -Pfx cert.pfx -Password geheim
-    pwsh packaging\sign.ps1 -Thumbprint A1B2C3...      # Zertifikat aus dem Zertifikatspeicher
-    pwsh packaging\sign.ps1 -SelfSigned                # Testsignatur erzeugen
+  Examples:
+    pwsh packaging\sign.ps1 -Pfx cert.pfx -Password secret
+    pwsh packaging\sign.ps1 -Thumbprint A1B2C3...      # certificate from the certificate store
+    pwsh packaging\sign.ps1 -SelfSigned                # create a test signature
 #>
 [CmdletBinding(DefaultParameterSetName = "Pfx")]
 param(
@@ -31,12 +31,12 @@ if (-not $File) {
     (Join-Path $root "dist\PortableManager\PortableManager.exe"),
     (Join-Path $root "target\release\maxtrix-app.exe")
   ) | Where-Object { Test-Path $_ }
-  if (-not $cand) { throw "Keine EXE gefunden. Erst bauen/packen oder -File angeben." }
+  if (-not $cand) { throw "No EXE found. Build/package first or pass -File." }
   $File = $cand[0]
 }
-if (-not (Test-Path $File)) { throw "Datei nicht gefunden: $File" }
+if (-not (Test-Path $File)) { throw "File not found: $File" }
 
-# --- signtool.exe finden (neueste x64-Version aus dem Windows SDK) ---
+# --- find signtool.exe (newest x64 version from the Windows SDK) ---
 function Find-SignTool {
   $bases = @("${env:ProgramFiles(x86)}\Windows Kits\10\bin", "${env:ProgramFiles}\Windows Kits\10\bin")
   foreach ($b in $bases) {
@@ -49,19 +49,19 @@ function Find-SignTool {
   }
   $c = Get-Command signtool.exe -ErrorAction SilentlyContinue
   if ($c) { return $c.Source }
-  throw "signtool.exe nicht gefunden - Windows SDK installieren."
+  throw "signtool.exe not found - install the Windows SDK."
 }
 $signtool = Find-SignTool
 Write-Host "signtool : $signtool" -ForegroundColor DarkGray
-Write-Host "Datei    : $File" -ForegroundColor DarkGray
+Write-Host "File     : $File" -ForegroundColor DarkGray
 
-# --- Signieren je nach Modus ---
+# --- sign according to the mode ---
 $common = @("sign", "/fd", "sha256", "/tr", $TimestampUrl, "/td", "sha256", "/v")
 
 switch ($PSCmdlet.ParameterSetName) {
   "Pfx" {
-    if (-not $Pfx) { throw "Bitte -Pfx <datei.pfx> [-Password <pw>] angeben (oder -Thumbprint / -SelfSigned)." }
-    if (-not (Test-Path $Pfx)) { throw "PFX nicht gefunden: $Pfx" }
+    if (-not $Pfx) { throw "Pass -Pfx <file.pfx> [-Password <pw>] (or -Thumbprint / -SelfSigned)." }
+    if (-not (Test-Path $Pfx)) { throw "PFX not found: $Pfx" }
     $args = $common + @("/f", $Pfx)
     if ($Password) { $args += @("/p", $Password) }
     $args += $File
@@ -70,27 +70,27 @@ switch ($PSCmdlet.ParameterSetName) {
     $args = $common + @("/sha1", $Thumbprint, $File)
   }
   "Self" {
-    $subject = "CN=Maxtrix (Test-Signatur), O=Maxtrix"
+    $subject = "CN=Maxtrix (test signature), O=Maxtrix"
     $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert -ErrorAction SilentlyContinue |
       Where-Object { $_.Subject -eq $subject } | Select-Object -First 1
     if (-not $cert) {
-      Write-Host "Erzeuge selbstsigniertes Test-Zertifikat ..." -ForegroundColor Yellow
+      Write-Host "Creating a self-signed test certificate ..." -ForegroundColor Yellow
       $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $subject `
         -CertStoreLocation Cert:\CurrentUser\My -KeyUsage DigitalSignature `
         -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(3)
     }
-    Write-Host "Zertifikat: $($cert.Thumbprint)" -ForegroundColor DarkGray
+    Write-Host "Certificate: $($cert.Thumbprint)" -ForegroundColor DarkGray
     $args = $common + @("/sha1", $cert.Thumbprint, $File)
   }
 }
 
 & $signtool @args
-if ($LASTEXITCODE -ne 0) { throw "signtool sign fehlgeschlagen (Exit $LASTEXITCODE)." }
+if ($LASTEXITCODE -ne 0) { throw "signtool sign failed (exit $LASTEXITCODE)." }
 
-Write-Host "`nVerifiziere ..." -ForegroundColor DarkGray
+Write-Host "`nVerifying ..." -ForegroundColor DarkGray
 & $signtool verify /pa /v $File
 if ($LASTEXITCODE -ne 0) {
-  Write-Warning "Verifikation meldet einen Fehler. Bei selbstsignierten Zertifikaten ist das normal (nicht als vertrauenswuerdig hinterlegt)."
+  Write-Warning "Verification reports an error. That is normal for self-signed certificates (not stored as trusted)."
 } else {
-  Write-Host "`nSignatur ok." -ForegroundColor Green
+  Write-Host "`nSignature ok." -ForegroundColor Green
 }

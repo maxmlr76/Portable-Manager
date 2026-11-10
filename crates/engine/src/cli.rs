@@ -22,7 +22,7 @@ pub struct CliTool {
 impl CliTool {
     /// The tool's catalog category (= its folder under `Tools\`).
     pub fn category(&self) -> &'static str {
-        catalog::find(self.name).map(|e| e.category).unwrap_or("Weitere")
+        catalog::find(self.name).map(|e| e.category).unwrap_or("More")
     }
 }
 
@@ -49,7 +49,7 @@ pub fn cli_tools() -> &'static [CliTool] {
         },
         CliTool {
             name: "gnupg",
-            env: &["GNUPGHOME  =  Tools\\Sicherheit\\gnupg\\home"],
+            env: &["GNUPGHOME  =  Tools\\Security\\gnupg\\home"],
             commands: &["gpg --list-keys", "gpg --full-generate-key", "gpg -c <file>"],
         },
         CliTool {

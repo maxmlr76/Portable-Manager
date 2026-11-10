@@ -235,3 +235,12 @@ msgstr "Noch keine Tools installiert."
 msgid "{} goes straight in."
 msgstr "{} kommt direkt hinein."
 
+msgid "Import list"
+msgstr "Liste importieren"
+
+msgid "Export…"
+msgstr "Exportieren…"
+
+msgid "Install missing ({})"
+msgstr "Fehlende installieren ({})"
+

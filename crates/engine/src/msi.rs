@@ -77,5 +77,5 @@ fn run_admin_install(msi: &Path, out: &Path) -> Result<i32> {
 
 #[cfg(not(windows))]
 fn run_admin_install(_msi: &Path, _out: &Path) -> Result<i32> {
-    bail!("MSI-Pakete lassen sich nur unter Windows entpacken")
+    bail!(crate::tr!("MSI packages can only be unpacked on Windows", "MSI-Pakete lassen sich nur unter Windows entpacken"))
 }

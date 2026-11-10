@@ -1,59 +1,59 @@
-# Code-Signierung & SmartScreen
+# Code signing & SmartScreen
 
-## Was Signieren bringt (und was nicht)
+## What signing does (and what it doesn't)
 
-Die EXE trägt bereits **Icon + Versions-Metadaten** (Firma „Maxtrix", Produktname,
-Version) — das macht sie schon erkennbar. Für die **SmartScreen-Warnung** beim ersten
-Start auf fremden PCs zählt aber die *Reputation* des Signatur-Zertifikats:
+The EXE already carries an **icon and version metadata** (company "Maxtrix", product
+name, version), which makes it recognisable. For the **SmartScreen warning** at first
+start on other PCs, though, what counts is the *reputation* of the signing certificate:
 
-| Weg | Kosten | SmartScreen |
+| Option | Rough cost | SmartScreen |
 |---|---|---|
-| **EV-Zertifikat** (Hardware-Token/HSM) | ~300–600 €/Jahr | sofort sauber |
-| **OV-Zertifikat** (normal) | ~150–300 €/Jahr | erst nach etwas Download-Reputation |
-| **Azure Trusted Signing** | ~10 $/Monat | wie OV, ohne Hardware-Token |
-| **Selbstsigniert** (`-SelfSigned`) | kostenlos | nur intern; auf fremden PCs weiter Warnung |
+| **EV certificate** (hardware token/HSM) | a few hundred €/year | clean right away |
+| **OV certificate** (standard) | lower than EV | only after some download reputation |
+| **Microsoft Artifact Signing** (formerly Azure Trusted Signing) | small monthly fee | like OV, no hardware token |
+| **Self-signed** (`-SelfSigned`) | free | internal only; other PCs keep warning |
 
-> Ein Zertifikat muss **auf einen Namen/eine Organisation ausgestellt** und bezahlt
-> werden — das kann nur der Inhaber selbst tun. Der Rest (Signieren, Zeitstempel,
-> Verifizieren) ist mit den Skripten hier ein Einzeiler.
+> A certificate must be **issued to a person or organisation** and paid for. Only
+> the owner can do that. Everything else (signing, timestamp, verification) is a
+> one-liner with the scripts here.
 
-## Signieren
+## Signing
 
-`packaging/sign.ps1` findet `signtool.exe` automatisch (Windows SDK), signiert mit
-SHA-256, setzt einen RFC-3161-Zeitstempel (Signatur bleibt nach Ablauf des Zertifikats
-gültig) und verifiziert danach.
+`packaging/sign.ps1` finds `signtool.exe` automatically (Windows SDK), signs with
+SHA-256, adds an RFC 3161 timestamp (the signature stays valid after the certificate
+expires) and verifies the result.
 
 ```powershell
-# Mit PFX-Datei (OV/EV-Export)
-pwsh packaging\sign.ps1 -Pfx pfad\zu\cert.pfx -Password geheim
+# With a PFX file (OV/EV export)
+pwsh packaging\sign.ps1 -Pfx path\to\cert.pfx -Password secret
 
-# Mit Zertifikat aus dem Windows-Zertifikatspeicher
+# With a certificate from the Windows certificate store
 pwsh packaging\sign.ps1 -Thumbprint A1B2C3D4...
 
-# Test-Signatur (selbstsigniert, nur intern – KEINE SmartScreen-Freigabe)
+# Test signature (self-signed, internal only, NO SmartScreen approval)
 pwsh packaging\sign.ps1 -SelfSigned
 ```
 
-Ohne `-File` signiert das Skript `dist\PortableManager\PortableManager.exe`
-(sonst `target\release\maxtrix-app.exe`). Mit `-File <pfad>` gezielt eine EXE.
+Without `-File` the script signs `dist\PortableManager\PortableManager.exe`
+(else `target\release\maxtrix-app.exe`). Use `-File <path>` to sign a specific EXE.
 
-## In einem Rutsch bauen + signieren + packen
+## Build, sign and package in one go
 
 ```powershell
 cargo build --release -p maxtrix-app
-pwsh packaging\package.ps1 -Pfx cert.pfx -Password geheim     # signiert die EXE im dist-Ordner, dann Zip
-# oder: -Thumbprint <hash>  /  -SelfSigned  /  ganz ohne = unsigniert
+pwsh packaging\package.ps1 -Pfx cert.pfx -Password secret     # signs the EXE in dist, then zips
+# or: -Thumbprint <hash>  /  -SelfSigned  /  none at all = unsigned
 ```
 
-## Azure Trusted Signing (Alternative ohne Hardware-Token)
+## Microsoft Artifact Signing (no hardware token)
 
-Microsofts Dienst (früher „Azure Code Signing"): Konto + verifizierte Identität in Azure
-anlegen, „Trusted Signing Account" + „Certificate Profile" erstellen, dann mit der
-`Azure.CodeSigning`-Dlib und signtool signieren. Lohnt sich, wenn kein EV-Token da ist.
-Details: https://learn.microsoft.com/azure/trusted-signing/
+Microsoft's signing service: create an account with a verified identity in Azure, a
+signing account and a certificate profile, then sign with its signtool plug-in. Worth
+it when there is no EV token. Details: https://learn.microsoft.com/azure/trusted-signing/
 
-## Icon / Metadaten
+## Icon / metadata
 
-Werden beim Build eingebettet (`crates/app/build.rs` via `winresource`, Quelle
-`crates/app/assets/maxtrix.ico`). Neues Icon: `.ico` ersetzen und neu bauen. Fehlt die
-`rc.exe` (Windows SDK), baut die App trotzdem — nur ohne Icon/Metadaten (Warnung im Build).
+Embedded at build time (`crates/app/build.rs` via `winresource`, source
+`crates/app/assets/maxtrix.ico`). New icon: replace the `.ico` and rebuild. Without
+`rc.exe` (Windows SDK) the app still builds, just without icon and metadata (a build
+warning says so).

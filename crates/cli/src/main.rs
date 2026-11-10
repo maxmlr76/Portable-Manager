@@ -244,7 +244,7 @@ fn cmd_audit(test_install: bool, keep_root: Option<String>) -> Result<()> {
                         let _ = catalog::remove_tool(&scratch, entry.category, entry.name);
                     }
                 }
-                (verdict, m.ext.clone(), target.unwrap_or_else(|| "(nur PATH/CLI)".into()), notes)
+                (verdict, m.ext.clone(), target.unwrap_or_else(|| "(PATH/CLI only)".into()), notes)
             }
         };
         match verdict {
@@ -328,7 +328,7 @@ fn main() -> Result<()> {
             let n = name()?;
             let repo = flag(&args, "--repo").ok_or_else(|| anyhow!("--repo is missing"))?;
             let file = flag(&args, "--file").ok_or_else(|| anyhow!("--file is missing"))?;
-            let cat = flag(&args, "--cat").unwrap_or_else(|| "Weitere".to_string());
+            let cat = flag(&args, "--cat").unwrap_or_else(|| "More".to_string());
             let summary =
                 catalog::install_from_repo(&n, &repo, &file, &cat, Path::new(&root()), &cli_events, &NO_CANCEL)?;
             let r = &summary.report;

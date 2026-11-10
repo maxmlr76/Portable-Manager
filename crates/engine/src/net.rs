@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use crate::Cancelled;
 
-const UA: &str = "MaxtrixPortableManager/0.1 (+https://maxtrix)";
+const UA: &str = concat!("MaxtrixPortableManager/", env!("CARGO_PKG_VERSION"), " (+https://github.com/maxmlr76/Portable-Manager)");
 
 /// Shared HTTP agent with timeouts, so a stalled server can't block an install
 /// forever (the read timeout applies per read, not to the whole download).
@@ -57,9 +57,20 @@ pub fn fetch_text(url: &str) -> Result<String> {
     agent()
         .get(url)
         .call()
-        .with_context(|| format!("Abruf fehlgeschlagen: {url}"))?
+        .with_context(|| crate::tr!("request failed: {url}", "Abruf fehlgeschlagen: {url}"))?
         .into_string()
         .context(crate::tr!("response is not valid text", "Antwort ist kein gültiger Text"))
+}
+
+/// Like `fetch_text`, but a 404 is `None` (the thing does not exist yet).
+pub fn fetch_text_opt(url: &str) -> Result<Option<String>> {
+    match agent().get(url).set("Accept", "application/vnd.github+json").call() {
+        Ok(resp) => Ok(Some(
+            resp.into_string().context(crate::tr!("response is not valid text", "Antwort ist kein gültiger Text"))?,
+        )),
+        Err(ureq::Error::Status(404, _)) => Ok(None),
+        Err(e) => Err(anyhow::Error::new(e).context(crate::tr!("request failed: {url}", "Abruf fehlgeschlagen: {url}"))),
+    }
 }
 
 /// Stream `url` into the file `dest`, hashing on the fly — nothing is held in RAM,

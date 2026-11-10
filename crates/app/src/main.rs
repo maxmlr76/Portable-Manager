@@ -18,7 +18,7 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 use maxtrix_engine::catalog::{self, CatalogEntry};
 use maxtrix_engine::install::InstallEvent;
-use maxtrix_engine::{net, resolver};
+use maxtrix_engine::{lists, net, resolver, selfupdate};
 
 mod icons;
 mod tray;
@@ -94,11 +94,11 @@ struct AppState {
     search_total: usize,         // server-reported total matches for the query
     search_gen: u64,
     verified_only: bool,
-    sort: String,       // "relevanz" | "sterne" | "name"
+    sort: String,       // "relevance" | "stars" | "name"
     page_size: usize,   // 10 | 20 | 50
     visible: usize,     // how many of search_hits to show
     loading_more: bool,
-    grid_cols: usize,   // 1 = Liste, 2 = Kacheln
+    grid_cols: usize,   // 1 = list, 2 = grid
     root: PathBuf,
     lists: Vec<UserList>,  // user-defined collections
     current_list: String,  // selected list (when view == "list")
@@ -107,7 +107,7 @@ struct AppState {
 }
 
 /// Group a flat item list into display rows: full-width elements stay single;
-/// consecutive plain "tool" cards pack `cols` per row (2 = Kacheln view).
+/// consecutive plain "tool" cards pack `cols` per row (2 = grid view).
 fn rowify(items: Vec<ToolItem>, cols: usize) -> Vec<ToolRow> {
     let mut rows = Vec::new();
     let mut i = 0;
@@ -208,15 +208,15 @@ fn mono(name: &str) -> String {
 fn category_icon(cat: &str) -> &'static str {
     match cat {
         "Reverse Engineering" => "chip",
-        "Netzwerk" => "network",
-        "Sicherheit" => "key",
+        "Network" => "network",
+        "Security" => "key",
         "System" => "system",
-        "Datenträger" => "disk",
+        "Disks" => "disk",
         "Browser" => "globe",
-        "Dateien" => "files",
-        "Entwicklung" => "cli",
+        "Files" => "files",
+        "Development" => "cli",
         "Multimedia" => "media",
-        "Grafik" => "image",
+        "Graphics" => "image",
         _ => "grid",
     }
 }
@@ -511,8 +511,9 @@ fn refresh() {
                     rows.push(to_item(t));
                 }
             }
+            let n = rows.len();
+            rows.insert(0, list_bar(&st, &members));
             if let Some(ui) = ctx.ui.upgrade() {
-                let n = rows.len();
                 ui.set_view_title(st.current_list.clone().into());
                 ui.set_view_subtitle(if n == 0 {
                     tr!("No tools yet. Add them with the list icon on a card.", "Noch keine Tools – über das Listen-Symbol auf einer Kachel hinzufügen.").into()
@@ -633,10 +634,10 @@ fn do_install(id: usize) {
     let file_path = t.file_path.clone();
     let from_repo = !repo.is_empty() && !t.curated;
     let is_search = id >= SEARCH_BASE;
-    // Folder category on disk: from-repo hits land in "Weitere"; curated tools use
+    // Folder category on disk: from-repo hits land in "More"; curated tools use
     // their catalog category (even when reached via search).
     let install_cat = if from_repo {
-        "Weitere".to_string()
+        "More".to_string()
     } else {
         catalog::find(&name).map(|e| e.category.to_string()).unwrap_or_else(|| t.category.clone())
     };
@@ -713,7 +714,7 @@ fn do_install(id: usize) {
         };
 
         let result = if from_repo {
-            catalog::install_from_repo(&name, &repo, &file_path, "Weitere", &root, &on, &cancel)
+            catalog::install_from_repo(&name, &repo, &file_path, "More", &root, &on, &cancel)
         } else {
             catalog::install_curated(&name, &root, &on, &cancel)
         };
@@ -752,7 +753,7 @@ fn do_install(id: usize) {
                         format!(" · + {}", summary.plugins.join(", "))
                     };
                     let files_txt = if files == 1 { tr!("1 file", "1 Datei") } else { tr!("{files} files", "{files} Dateien") };
-                    let detail = format!("{files_txt}{extra}"); // "installiert" zeigt die Status-Pille
+                    let detail = format!("{files_txt}{extra}"); // the status pill already says "installed"
                     let ver_s = ver.clone();
                     let cat_s = install_cat.clone();
                     let disk = catalog::dir_size(&r.target);
@@ -1057,7 +1058,7 @@ fn open_details(id: usize) {
     let repo = t.repo.clone();
     let file_path = t.file_path.clone();
     let from_repo = !repo.is_empty() && !t.curated;
-    let install_cat = if from_repo { "Weitere".to_string() } else { t.category.clone() };
+    let install_cat = if from_repo { "More".to_string() } else { t.category.clone() };
 
     let action = match t.status.as_str() {
         "installed" if t.cli => tr!("Open terminal", "Terminal öffnen"),
@@ -1176,7 +1177,7 @@ fn build_search_state(
         None => {
             let cat = catalog::find(&h.name)
                 .map(|e| e.category.to_string())
-                .unwrap_or_else(|| "Weitere".to_string());
+                .unwrap_or_else(|| "More".to_string());
             ("available".to_string(), h.version.clone(), cat)
         }
     };
@@ -1229,7 +1230,7 @@ fn apply_search_filter() {
 
         // Stable sort keeps server order as the tie-break.
         match sort.as_str() {
-            "sterne" => hits.sort_by(|a, b| b.stars.cmp(&a.stars)),
+            "stars" => hits.sort_by(|a, b| b.stars.cmp(&a.stars)),
             "name" => hits.sort_by_key(|a| a.name.to_ascii_lowercase()),
             _ => {
                 // Relevanz: float an exact/prefix name match up, else server order.
@@ -1419,7 +1420,7 @@ fn drawer_primary() {
     }
 }
 
-// ---- Stick root: detection, selection, persistence ----
+// ---- Drive root: detection, selection, persistence ----
 
 fn app_dir() -> PathBuf {
     std::env::current_exe()
@@ -1496,7 +1497,7 @@ fn save_root(root: &std::path::Path) {
     write_config_field("root", serde_json::json!(root.to_string_lossy()));
 }
 
-/// Persisted list columns (1 = Liste, 2 = Kacheln). Default 1.
+/// Persisted list columns (1 = list, 2 = grid). Default 1.
 fn load_cols() -> usize {
     match read_config()["cols"].as_u64() {
         Some(2) => 2,
@@ -1547,6 +1548,7 @@ fn set_language(lang: &str) {
     });
     refresh();
     refresh_drive_card();
+    render_update_card();
 }
 
 fn save_cols(n: usize) {
@@ -1695,7 +1697,7 @@ fn list_tool_clicked(id: i32) {
         "installed" | "update" if t.cli => open_terminal_for(id),
         "installed" | "update" => {
             do_launch(id);
-            show_toast(format!("{} gestartet", title_of(&t)), "ok");
+            show_toast(tr!("{} started", "{} gestartet", title_of(&t)), "ok");
         }
         _ => open_details(id),
     }
@@ -1716,7 +1718,7 @@ fn create_list(name: String) {
     if name.is_empty() {
         return;
     }
-    // A tool that goes straight in (dropped on "Neue Liste", or from its popup).
+    // A tool that goes straight in (dropped on "New list", or from its popup).
     let tool_id = with_ctx(|ctx| ctx.ui.upgrade().map(|u| u.get_new_list_tool_id()).unwrap_or(-1)).unwrap_or(-1);
     let tool = (tool_id >= 0).then(|| get_tool(tool_id as usize)).flatten();
     let created = with_ctx(|ctx| {
@@ -1755,7 +1757,7 @@ fn create_list(name: String) {
     }
 }
 
-/// Delete a list right away — the toast offers "Rückgängig" instead of asking first.
+/// Delete a list right away — the toast offers "Undo" instead of asking first.
 fn delete_list(name: String) {
     let removed = with_ctx(|ctx| {
         let mut st = ctx.state.borrow_mut();
@@ -1789,6 +1791,254 @@ fn toast_action() {
         }
         None => hide_toast(),
     }
+}
+
+/// The bar on top of a list view: how much of it is on the drive, Export, and
+/// "Install missing" for catalog tools that are not installed yet.
+fn list_bar(st: &AppState, members: &[String]) -> ToolItem {
+    let is_member = |t: &ToolState| t.status != "removed" && members.iter().any(|m| m.eq_ignore_ascii_case(&t.name));
+    let total = members.len();
+    let on_drive = st.tools.iter().filter(|t| is_member(t) && matches!(t.status.as_str(), "installed" | "update" | "broken")).count();
+    let missing = st.tools.iter().filter(|t| is_member(t) && t.curated && matches!(t.status.as_str(), "available" | "error")).count();
+    let unknown = members
+        .iter()
+        .filter(|m| !st.tools.iter().any(|t| t.status != "removed" && t.name.eq_ignore_ascii_case(m)))
+        .count();
+    let mut bar = plain_item("listbar", "", false);
+    bar.title = tr!("{on_drive} of {total} tools on the drive", "{on_drive} von {total} Tools auf dem Stick").into();
+    bar.summary = if unknown > 0 {
+        tr!("{unknown} not in the catalog: look for them under Search all.", "{unknown} nicht im Katalog: unter „Alle durchsuchen“ suchen.")
+    } else if missing > 0 {
+        tr!("Missing tools come from the catalog's official sources.", "Fehlende Tools kommen aus den offiziellen Quellen des Katalogs.")
+    } else {
+        tr!("Export the list to share it.", "Exportiere die Liste, um sie weiterzugeben.")
+    }
+    .into();
+    bar.count = missing as i32;
+    bar
+}
+
+/// "Install missing": every catalog tool of the open list that is not installed.
+fn install_list_missing() {
+    let ids: Vec<usize> = with_ctx(|ctx| {
+        let st = ctx.state.borrow();
+        let members = st.lists.iter().find(|l| l.name == st.current_list).map(|l| l.tools.clone()).unwrap_or_default();
+        st.tools
+            .iter()
+            .filter(|t| t.curated && matches!(t.status.as_str(), "available" | "error"))
+            .filter(|t| members.iter().any(|m| m.eq_ignore_ascii_case(&t.name)))
+            .map(|t| t.id)
+            .collect()
+    })
+    .unwrap_or_default();
+    for id in ids {
+        do_install(id);
+    }
+}
+
+/// File dialog for list files (`save` = suggested file name for an export).
+fn list_file_dialog(save: Option<&str>) -> Option<PathBuf> {
+    // Debug builds: tests pass the file instead of clicking through a dialog.
+    #[cfg(debug_assertions)]
+    if let Ok(p) = std::env::var("MAXTRIX_DIALOG_FILE") {
+        return Some(PathBuf::from(p));
+    }
+    let dialog = rfd::FileDialog::new().add_filter(tr!("Portable Manager list", "Portable-Manager-Liste"), &["json"]);
+    match save {
+        Some(name) => dialog.set_title(tr!("Export list", "Liste exportieren")).set_file_name(name).save_file(),
+        None => dialog.set_title(tr!("Import list", "Liste importieren")).pick_file(),
+    }
+}
+
+fn export_list() {
+    let Some((name, tools)) = with_ctx(|ctx| {
+        let st = ctx.state.borrow();
+        st.lists.iter().find(|l| l.name == st.current_list).map(|l| (l.name.clone(), l.tools.clone()))
+    })
+    .flatten() else {
+        return;
+    };
+    let Some(mut path) = list_file_dialog(Some(&lists::file_name(&name))) else { return };
+    if path.extension().is_none() {
+        path.set_extension("json");
+    }
+    let file = path.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+    match std::fs::write(&path, lists::to_json(&name, &tools)) {
+        Ok(()) => show_toast(tr!("“{name}” exported to {file}", "„{name}“ exportiert nach {file}"), "ok"),
+        Err(e) => show_toast(tr!("Export failed: {e}", "Export fehlgeschlagen: {e}"), "error"),
+    }
+}
+
+fn import_list() {
+    let Some(path) = list_file_dialog(None) else { return };
+    let read = match std::fs::metadata(&path) {
+        Ok(m) if m.len() > lists::MAX_FILE_BYTES => Err(tr!("the file is too large", "die Datei ist zu groß")),
+        Ok(_) => std::fs::read_to_string(&path).map_err(|e| e.to_string()),
+        Err(e) => Err(e.to_string()),
+    };
+    let (name, tools) = match read.and_then(|text| lists::parse(&text).map_err(|e| e.to_string())) {
+        Ok(v) => v,
+        Err(e) => {
+            show_toast(tr!("Import failed: {e}", "Import fehlgeschlagen: {e}"), "error");
+            return;
+        }
+    };
+    let n = tools.len();
+    let Some(name) = with_ctx(|ctx| {
+        let mut st = ctx.state.borrow_mut();
+        let taken: Vec<String> = st.lists.iter().map(|l| l.name.clone()).collect();
+        let name = lists::unique_name(&name, &taken);
+        st.lists.push(UserList { name: name.clone(), tools });
+        st.view = "list".into();
+        st.current_list = name.clone();
+        if !st.open_lists.contains(&name) {
+            st.open_lists.push(name.clone());
+            write_config_field("lists_open", serde_json::json!(st.open_lists));
+        }
+        name
+    }) else {
+        return;
+    };
+    lists_changed();
+    show_toast(tr!("List “{name}” imported ({n} tools)", "Liste „{name}“ importiert ({n} Tools)"), "ok");
+    flash_list(&name);
+}
+
+// ── App self-update (see engine::selfupdate) ──
+
+enum AppUpdate {
+    Idle,
+    Available(selfupdate::Release),
+    Busy,
+    Ready(String),
+    Failed(selfupdate::Release, String),
+}
+
+thread_local! {
+    static APP_UPDATE: RefCell<AppUpdate> = const { RefCell::new(AppUpdate::Idle) };
+}
+static RESTART: AtomicBool = AtomicBool::new(false);
+static UPDATE_STARTED: AtomicBool = AtomicBool::new(false);
+static RUNNING_EXE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// The EXE as it was started (after an update the file at this path is the new one).
+fn running_exe() -> PathBuf {
+    RUNNING_EXE.get().cloned().unwrap_or_else(|| app_dir().join(selfupdate::EXE_NAME))
+}
+
+/// Only a packaged release updates itself, never a development build
+/// (`MAXTRIX_UPDATE_API` allows it for testing).
+fn self_update_allowed() -> bool {
+    std::env::var_os("MAXTRIX_UPDATE_API").is_some()
+        || (!cfg!(debug_assertions)
+            && running_exe().file_name().is_some_and(|n| n.eq_ignore_ascii_case(selfupdate::EXE_NAME)))
+}
+
+pub(crate) fn update_check_enabled() -> bool {
+    read_config()["update_check"].as_bool() != Some(false)
+}
+
+/// Tray menu: "Check for app updates".
+pub(crate) fn set_update_check(on: bool) {
+    write_config_field("update_check", serde_json::json!(on));
+    if on {
+        spawn_app_update_check();
+    }
+}
+
+fn set_update_card(text: String, action: String) {
+    with_ctx(|ctx| {
+        if let Some(ui) = ctx.ui.upgrade() {
+            ui.set_app_update_text(text.into());
+            ui.set_app_update_action(action.into());
+        }
+    });
+}
+
+/// Show the card for the current state (again after a language switch).
+fn render_update_card() {
+    let card = APP_UPDATE.with(|s| match &*s.borrow() {
+        AppUpdate::Available(r) => {
+            let v = &r.version;
+            Some((tr!("Version {v} is available.", "Version {v} ist verfügbar."), tr!("Update", "Aktualisieren")))
+        }
+        AppUpdate::Ready(v) => Some((
+            tr!("Version {v} is installed. Restart to use it.", "Version {v} ist installiert. Neu starten, um sie zu nutzen."),
+            tr!("Restart", "Neu starten"),
+        )),
+        AppUpdate::Failed(_, e) => Some((tr!("Update failed: {e}", "Update fehlgeschlagen: {e}"), tr!("Try again", "Erneut versuchen"))),
+        AppUpdate::Idle => Some((String::new(), String::new())),
+        AppUpdate::Busy => None,
+    });
+    if let Some((text, action)) = card {
+        set_update_card(text, action);
+    }
+}
+
+fn spawn_app_update_check() {
+    if !self_update_allowed() || !update_check_enabled() {
+        return;
+    }
+    if !APP_UPDATE.with(|s| matches!(&*s.borrow(), AppUpdate::Idle)) {
+        return;
+    }
+    let Some(ui_weak) = with_ctx(|ctx| ctx.ui.clone()) else { return };
+    std::thread::spawn(move || {
+        // Offline or no newer release: stay quiet.
+        let Ok(Some(rel)) = selfupdate::check(env!("CARGO_PKG_VERSION")) else { return };
+        let _ = ui_weak.upgrade_in_event_loop(move |_| {
+            APP_UPDATE.with(|s| *s.borrow_mut() = AppUpdate::Available(rel));
+            render_update_card();
+        });
+    });
+}
+
+fn app_update_clicked() {
+    let state = APP_UPDATE.with(|s| std::mem::replace(&mut *s.borrow_mut(), AppUpdate::Busy));
+    match state {
+        AppUpdate::Available(rel) | AppUpdate::Failed(rel, _) => start_app_update(rel),
+        AppUpdate::Ready(v) => {
+            APP_UPDATE.with(|s| *s.borrow_mut() = AppUpdate::Ready(v));
+            RESTART.store(true, Ordering::Relaxed);
+            quit_app();
+        }
+        other => APP_UPDATE.with(|s| *s.borrow_mut() = other),
+    }
+}
+
+fn start_app_update(rel: selfupdate::Release) {
+    let Some(ui_weak) = with_ctx(|ctx| ctx.ui.clone()) else { return };
+    let (app, exe) = (app_dir(), running_exe());
+    UPDATE_STARTED.store(true, Ordering::Relaxed);
+    let v = rel.version.clone();
+    set_update_card(tr!("Downloading version {v}…", "Lade Version {v}…"), String::new());
+    std::thread::spawn(move || {
+        let cancel = AtomicBool::new(false);
+        let last = AtomicUsize::new(usize::MAX);
+        let progress_ui = ui_weak.clone();
+        let progress_v = rel.version.clone();
+        let on = move |done: u64, total: Option<u64>| {
+            let Some(total) = total.filter(|t| *t > 0) else { return };
+            let pct = (done.saturating_mul(100) / total) as usize;
+            if last.swap(pct, Ordering::Relaxed) != pct {
+                let v = progress_v.clone();
+                let _ = progress_ui.upgrade_in_event_loop(move |_| {
+                    set_update_card(tr!("Downloading version {v}… {pct}%", "Lade Version {v}… {pct}%"), String::new());
+                });
+            }
+        };
+        let result = selfupdate::download(&rel, &app, &on, &cancel)
+            .and_then(|zip| selfupdate::stage(&zip, &app))
+            .and_then(|new_root| selfupdate::apply(&new_root, &app, &exe));
+        let _ = ui_weak.upgrade_in_event_loop(move |_| {
+            let next = match result {
+                Ok(_) => AppUpdate::Ready(rel.version),
+                Err(e) => AppUpdate::Failed(rel, short_err(&e.to_string())),
+            };
+            APP_UPDATE.with(|s| *s.borrow_mut() = next);
+            render_update_card();
+        });
+    });
 }
 
 fn select_list(name: String) {
@@ -1858,7 +2108,7 @@ fn drop_on_list_id(id: usize, list: String) {
     }
 }
 
-/// Dropped on "Neue Liste mit diesem Tool": ask for the name, the tool goes in.
+/// Dropped on "New list with this tool": ask for the name, the tool goes in.
 fn drop_new_list(id: i32) {
     let Some(t) = (id >= 0).then(|| get_tool(id as usize)).flatten() else { return };
     with_ctx(|ctx| {
@@ -1900,7 +2150,7 @@ thread_local! {
     static FLASH_GEN: Cell<u64> = const { Cell::new(0) };
 }
 
-/// What the toast's "Rückgängig" restores.
+/// What the toast's "Undo" restores.
 enum Undo {
     DeletedList(UserList, usize),
 }
@@ -2290,6 +2540,7 @@ fn spawn_disk_sizes() {
 fn set_root(new_root: PathBuf) {
     save_root(&new_root);
     maxtrix_engine::fsutil::cleanup_stale(&new_root);
+    catalog::migrate_legacy_categories(&new_root);
     let tools = build_tools(&new_root);
     let (frac, cap) = drive_cap_props(maxtrix_engine::drives::disk_usage(&new_root), installed_count(&tools));
     with_ctx(|ctx| {
@@ -2456,7 +2707,7 @@ fn settle_mini(weak: slint::Weak<MiniWindow>, tries: u32) {
     }
 }
 
-/// Bring the main window up with the "Über" dialog open.
+/// Bring the main window up with the "About" dialog open.
 #[cfg(windows)]
 pub(crate) fn show_about() {
     show_main_window();
@@ -2533,6 +2784,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if soft_render_setting() && std::env::var_os("SLINT_BACKEND").is_none() {
         std::env::set_var("SLINT_BACKEND", "winit-software");
     }
+    let _ = RUNNING_EXE.set(std::env::current_exe().unwrap_or_else(|_| app_dir().join(selfupdate::EXE_NAME)));
+    // Old files of an earlier app update (the old EXE could not go while it ran).
+    selfupdate::cleanup(&app_dir());
+    // Right after "Restart" the old process may still be exiting and hold its
+    // EXE; try once more a little later.
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        if !UPDATE_STARTED.load(Ordering::Relaxed) {
+            selfupdate::remove_old_files(&app_dir());
+        }
+    });
     let ui = MainWindow::new()?;
     apply_language(&ui, saved_or_system_german());
     ui.on_set_language(|l| set_language(l.as_str()));
@@ -2540,6 +2802,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = initial_root();
     // Work folders an interrupted install left behind (killed app, pulled stick).
     maxtrix_engine::fsutil::cleanup_stale(&root);
+    // Drives from before 0.1.2 have German category folders.
+    catalog::migrate_legacy_categories(&root);
     let tools = build_tools(&root);
     let (frac, cap) = drive_cap_props(maxtrix_engine::drives::disk_usage(&root), installed_count(&tools));
     ui.set_drive_info(drive_display(&root).into());
@@ -2569,7 +2833,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 search_total: 0,
                 search_gen: 0,
                 verified_only: true,
-                sort: "relevanz".into(),
+                sort: "relevance".into(),
                 page_size: 20,
                 visible: 20,
                 loading_more: false,
@@ -2622,6 +2886,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ui.on_load_more(load_more);
     ui.on_set_cols(|n| set_cols(n as usize));
     ui.on_create_list(|n| create_list(n.to_string()));
+    ui.on_import_list(import_list);
+    ui.on_export_list(export_list);
+    ui.on_install_list_missing(install_list_missing);
+    ui.on_app_update_clicked(app_update_clicked);
     ui.on_delete_list(|n| delete_list(n.to_string()));
     ui.on_toggle_list_open(|n| toggle_list_open(n.to_string()));
     ui.on_list_tool_clicked(list_tool_clicked);
@@ -2667,6 +2935,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     spawn_version_fetch();
     spawn_disk_sizes();
+    spawn_app_update_check();
 
     // Debug builds only: scripted UI test run (see testhook.rs).
     #[cfg(debug_assertions)]
@@ -2778,6 +3047,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(windows))]
     {
         ui.run()?;
+    }
+    // "Restart" after an app update: the instance lock is gone with the window
+    // block above, so the new EXE starts as the first instance.
+    if RESTART.load(Ordering::Relaxed) {
+        let _ = std::process::Command::new(running_exe()).spawn();
     }
     Ok(())
 }

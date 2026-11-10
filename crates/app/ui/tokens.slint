@@ -1,14 +1,14 @@
-// MAXTRIX-Design-Tokens für die App.
+// MAXTRIX design tokens for the app.
 //
-// Dieselben Werte wie auf der Website maxtrix.dev (css/tokens.css, dunkler Satz).
-// Ändert sich dort etwas, hier nachziehen.
+// The same values as on the website maxtrix.dev (css/tokens.css, dark set).
+// When something changes there, update it here.
 //
-// Farbregel der Marke: nur Chrome, Graphit, Mono. Einzige Ausnahme ist `danger`
-// für Fehler. Status wird über die Form gezeigt (voller Punkt / Ring / gestrichelt),
-// nie über eine Farbe. Keine Hex-Werte in app.slint — alles kommt von hier.
+// Brand colour rule: only chrome, graphite, mono. The one exception is `danger`
+// for errors. Status is shown by shape (filled dot / ring / dashed), never by a
+// colour. No hex values in app.slint, everything comes from here.
 
 export global Mx {
-    // Graphit-Stufen (dunkel → hell)
+    // Graphite steps (dark → light)
     out property <color> foot: #0a0c0f;
     out property <color> bg: #0d0f13;
     out property <color> panel: #111318;
@@ -30,44 +30,44 @@ export global Mx {
     out property <brush> chrome-text: @linear-gradient(180deg, #f5f7f9 0%, #c6cdd5 45%, #8e98a4 58%, #eef1f4 100%);
     out property <brush> chrome-btn: @linear-gradient(180deg, #fafbfc 0%, #d3d9df 40%, #9aa5b1 55%, #cfd6de 75%, #eef1f4 100%);
     out property <brush> chrome-btn-pressed: @linear-gradient(180deg, #d3d9df 0%, #aab3bd 40%, #808b98 55%, #aab3bd 75%, #c6cdd5 100%);
-    // Für den Software-Renderer: er kann Verläufe nicht mit runden Ecken kombinieren.
+    // For the software renderer: it cannot combine gradients with rounded corners.
     out property <color> chrome-flat: #d3d9df;
     out property <color> chrome-flat-hover: #eef1f4;
     out property <color> chrome-flat-pressed: #9aa5b1;
 
-    // Teile („Bits") — das gemeinsame Motiv: offen → läuft → geprüft
+    // Bits, the shared motif: open → running → verified
     out property <color> bit-empty: #232830;
     out property <color> bit-moving: #6f7986;
     out property <color> bit-done: #e7ebef;
 
-    // Funktional
+    // Functional
     out property <color> danger: #e8877d;
     out property <color> danger-soft: #e8877d24;
     out property <color> danger-line: #e8877d66;
 
-    // Schleier aus Silber (Hover, Auswahl, Fokusring)
+    // Silver veils (hover, selection, focus ring)
     out property <color> tint-03: #c6cdd508;
     out property <color> tint-07: #c6cdd512;
     out property <color> tint-12: #c6cdd51f;
     out property <color> tint-22: #c6cdd538;
     out property <color> wash: #ffffff05;
 
-    // Messraster im Hintergrund
+    // Measuring grid in the background
     out property <color> grid-major: #9aa3ae12;
     out property <color> grid-minor: #9aa3ae09;
 
-    // Karten: senkrechter Verlauf panel-2 → panel
+    // Cards: vertical gradient panel-2 → panel
     out property <brush> card: @linear-gradient(180deg, #1b1e25 0%, #111318 100%);
     out property <color> card-flat: #16181d;
     out property <color> shadow: #00000080;
     out property <color> shine: #ffffff8c;
 
-    // Form
+    // Shape
     out property <length> radius-s: 6px;
     out property <length> radius: 10px;
     out property <length> radius-l: 14px;
 
-    // Bewegung: ein Rhythmus für alles
+    // Motion: one rhythm for everything
     out property <duration> dur-fast: 120ms;
     out property <duration> dur: 220ms;
 }
