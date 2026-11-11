@@ -18,7 +18,7 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 use maxtrix_engine::catalog::{self, CatalogEntry};
 use maxtrix_engine::install::InstallEvent;
-use maxtrix_engine::{lists, net, resolver, selfupdate};
+use maxtrix_engine::{custom, health, lists, net, resolver, selfupdate};
 
 mod icons;
 mod tray;
@@ -252,7 +252,13 @@ fn to_item_kind(t: &ToolState, kind: &str) -> ToolItem {
         meta: meta_line(t).into(),
         cli: t.cli,
         version: t.version.clone().into(),
-        summary: t.summary.clone().into(),
+        // Tools found on the drive have no text of their own; translated here so
+        // it follows a language switch.
+        summary: if t.summary.is_empty() && !t.curated && t.repo.is_empty() {
+            tr!("found on the drive", "auf dem Stick gefunden").into()
+        } else {
+            t.summary.clone().into()
+        },
         category: catalog::category_label(&t.category).into(),
         status: t.status.clone().into(),
         progress: t.progress,
@@ -558,9 +564,14 @@ fn refresh() {
         if st.view == "updates" && updates > 0 {
             rows.insert(0, plain_item("updateall", "", false));
         }
+        let shown = rows.len();
+        // Installed view: the drive check (and "Add own tool") on top.
+        if st.view == "installed" && search.is_empty() {
+            rows.insert(0, health_item());
+        }
 
         if let Some(ui) = ctx.ui.upgrade() {
-            let (title, sub) = view_titles(&st.view, rows.len(), updates);
+            let (title, sub) = view_titles(&st.view, shown, updates);
             ui.set_view_title(title.into());
             ui.set_view_subtitle(sub.into());
             ui.set_update_count(updates as i32);
@@ -1904,6 +1915,340 @@ fn import_list() {
     flash_list(&name);
 }
 
+// ── Drive check (see engine::health) ──
+
+enum Health {
+    Idle,
+    Busy,
+    Done(health::Report),
+    /// After a repair: what was done.
+    Info(String),
+}
+
+thread_local! {
+    static HEALTH: RefCell<Health> = const { RefCell::new(Health::Idle) };
+}
+
+/// Findings shown in the bar; the rest is summed up in one line.
+const HEALTH_LINES: usize = 4;
+
+/// The bar on top of "Installed".
+fn health_item() -> ToolItem {
+    let mut it = plain_item("health", "", false);
+    let (title, summary, button, status, lines) = HEALTH.with(|h| match &*h.borrow() {
+        Health::Idle => (
+            tr!("Drive check", "Stick-Prüfung"),
+            tr!("Finds tools that no longer start and leftovers of cancelled installs.", "Findet Tools, die nicht mehr starten, und Reste abgebrochener Installationen."),
+            tr!("Check now", "Jetzt prüfen"),
+            "idle",
+            0,
+        ),
+        Health::Busy => (tr!("Drive check", "Stick-Prüfung"), tr!("Checking…", "Prüfe…"), String::new(), "busy", 0),
+        Health::Info(s) => (tr!("Drive check", "Stick-Prüfung"), s.clone(), tr!("Check again", "Erneut prüfen"), "idle", 0),
+        Health::Done(r) if r.findings.is_empty() => {
+            let n = r.tools;
+            (
+                tr!("No problems found", "Keine Probleme gefunden"),
+                if n == 1 { tr!("1 tool checked.", "1 Tool geprüft.") } else { tr!("{n} tools checked.", "{n} Tools geprüft.") },
+                tr!("Check again", "Erneut prüfen"),
+                "ok",
+                0,
+            )
+        }
+        Health::Done(r) => {
+            let n = r.findings.len();
+            let fix = r.findings.iter().filter(|f| f.fixable()).count();
+            let mut lines: Vec<String> = r.findings.iter().take(HEALTH_LINES).map(|f| f.text()).collect();
+            if n > HEALTH_LINES {
+                let more = n - HEALTH_LINES;
+                lines.push(tr!("… and {more} more", "… und {more} weitere"));
+            }
+            if r.findings.iter().any(|f| !f.fixable()) {
+                lines.push(tr!(
+                    "Not in the catalog, so not repairable here: remove it or add it again with “Add own tool”.",
+                    "Nicht im Katalog, daher hier nicht reparierbar: entfernen oder über „Eigenes Tool“ neu hinzufügen."
+                ));
+            }
+            (
+                if n == 1 { tr!("1 problem found", "1 Problem gefunden") } else { tr!("{n} problems found", "{n} Probleme gefunden") },
+                lines.join("\n"),
+                if fix > 0 { tr!("Repair ({fix})", "Reparieren ({fix})") } else { tr!("Check again", "Erneut prüfen") },
+                "problems",
+                lines.len().saturating_sub(1),
+            )
+        }
+    });
+    it.title = title.into();
+    it.summary = summary.into();
+    it.detail = button.into();
+    it.status = status.into();
+    it.lines = lines as i32;
+    it
+}
+
+fn health_action() {
+    let state = HEALTH.with(|h| std::mem::replace(&mut *h.borrow_mut(), Health::Busy));
+    match state {
+        Health::Done(r) if r.findings.iter().any(|f| f.fixable()) => repair_drive(r),
+        Health::Busy => {}
+        _ => run_health_check(),
+    }
+}
+
+fn run_health_check() {
+    let Some((root, ui_weak)) = with_ctx(|ctx| (ctx.state.borrow().root.clone(), ctx.ui.clone())) else { return };
+    refresh();
+    std::thread::spawn(move || {
+        let report = health::check(&root);
+        let _ = ui_weak.upgrade_in_event_loop(move |_| {
+            // Catalog tools that cannot start get "Broken" and a Reinstall button.
+            with_ctx(|ctx| {
+                let mut st = ctx.state.borrow_mut();
+                for f in report.findings.iter().filter(|f| f.reinstall()) {
+                    if let Some(t) = st.tools.iter_mut().find(|t| {
+                        t.curated && t.name.eq_ignore_ascii_case(&f.name) && matches!(t.status.as_str(), "installed" | "update")
+                    }) {
+                        t.status = "broken".into();
+                        t.detail = f.text();
+                    }
+                }
+            });
+            HEALTH.with(|h| *h.borrow_mut() = Health::Done(report));
+            refresh();
+        });
+    });
+}
+
+/// Delete leftovers, reinstall broken catalog tools (their settings are kept).
+fn repair_drive(report: health::Report) {
+    let Some((root, busy)) = with_ctx(|ctx| {
+        let st = ctx.state.borrow();
+        (st.root.clone(), st.tools.iter().any(|t| t.status == "installing"))
+    }) else {
+        return;
+    };
+    if busy {
+        HEALTH.with(|h| *h.borrow_mut() = Health::Done(report));
+        show_toast(tr!("Please wait until the running installs are finished.", "Bitte warten, bis die laufenden Installationen fertig sind."), "info");
+        return;
+    }
+    let removed = health::remove_folders(&root, &report.findings);
+    let ids: Vec<usize> = with_ctx(|ctx| {
+        let st = ctx.state.borrow();
+        report
+            .findings
+            .iter()
+            .filter(|f| f.reinstall())
+            .filter_map(|f| st.tools.iter().find(|t| t.curated && t.name.eq_ignore_ascii_case(&f.name)).map(|t| t.id))
+            .collect()
+    })
+    .unwrap_or_default();
+    let n = ids.len();
+    let mut parts: Vec<String> = Vec::new();
+    match removed {
+        0 => {}
+        1 => parts.push(tr!("Removed 1 leftover folder", "1 Rest entfernt")),
+        r => parts.push(tr!("Removed {r} leftover folders", "{r} Reste entfernt")),
+    }
+    match n {
+        0 => {}
+        1 => parts.push(tr!("reinstalling 1 tool (settings are kept)", "1 Tool wird neu installiert (Einstellungen bleiben)")),
+        n => parts.push(tr!("reinstalling {n} tools (settings are kept)", "{n} Tools werden neu installiert (Einstellungen bleiben)")),
+    }
+    let joined = parts.join(", ");
+    let mut chars = joined.chars();
+    let text = match chars.next() {
+        Some(first) => format!("{}{}.", first.to_uppercase(), chars.as_str()),
+        None => tr!("Nothing could be repaired.", "Nichts konnte repariert werden."),
+    };
+    HEALTH.with(|h| *h.borrow_mut() = Health::Info(text));
+    for id in ids {
+        do_install(id);
+    }
+    refresh();
+    refresh_drive_card();
+}
+
+// ── Add own tool (see engine::custom) ──
+
+struct AddState {
+    exe: PathBuf,
+    category: String,
+    can_copy_folder: bool,
+}
+
+thread_local! {
+    static ADD: RefCell<Option<AddState>> = const { RefCell::new(None) };
+}
+
+fn pick_program() -> Option<PathBuf> {
+    // Debug builds: tests pass the file instead of clicking through a dialog.
+    #[cfg(debug_assertions)]
+    if let Ok(p) = std::env::var("MAXTRIX_DIALOG_EXE") {
+        return Some(PathBuf::from(p));
+    }
+    rfd::FileDialog::new()
+        .set_title(tr!("Choose the program to add", "Programm zum Hinzufügen wählen"))
+        .add_filter(tr!("Programs", "Programme"), &["exe", "bat", "cmd"])
+        .pick_file()
+}
+
+/// Every category a tool can go to, in catalog order.
+fn add_categories() -> Vec<&'static str> {
+    let mut cats: Vec<&'static str> = Vec::new();
+    for e in catalog::curated() {
+        if !cats.contains(&e.category) {
+            cats.push(e.category);
+        }
+    }
+    if !cats.contains(&"More") {
+        cats.push("More");
+    }
+    cats
+}
+
+fn add_cat_rows(active: &str) -> Vec<ChipRow> {
+    const LINE: f32 = 456.0; // dialog width minus padding
+    let width = |c: &CatItem| 46.0 + c.label.chars().count().max(4) as f32 * 6.8;
+    let mut rows = Vec::new();
+    let (mut line, mut used): (Vec<CatItem>, f32) = (Vec::new(), 0.0);
+    for c in add_categories() {
+        let chip = CatItem { name: c.into(), label: catalog::category_label(c).into(), icon: category_icon(c).into(), count: 0, active: c == active };
+        let w = width(&chip);
+        if !line.is_empty() && used + w > LINE {
+            rows.push(ChipRow { chips: ModelRc::from(Rc::new(VecModel::from(std::mem::take(&mut line)))) });
+            used = 0.0;
+        }
+        used += w + 7.0;
+        line.push(chip);
+    }
+    if !line.is_empty() {
+        rows.push(ChipRow { chips: ModelRc::from(Rc::new(VecModel::from(line))) });
+    }
+    rows
+}
+
+fn open_add_dialog(exe: PathBuf, category: String) {
+    let sug = custom::suggest(&exe);
+    let folder_text = sug.folder.as_ref().map(|f| {
+        let (name, files, size) = (&f.name, f.files, maxtrix_engine::human(f.bytes));
+        tr!(
+            "Copy the whole folder “{name}” ({files} files, {size}). Turn off to copy only the program file.",
+            "Den ganzen Ordner „{name}“ kopieren ({files} Dateien, {size}). Aus = nur die Programmdatei."
+        )
+    });
+    with_ctx(|ctx| {
+        if let Some(ui) = ctx.ui.upgrade() {
+            ui.set_add_exe(exe.display().to_string().into());
+            ui.set_add_name(sug.name.clone().into());
+            ui.set_add_folder_text(folder_text.clone().unwrap_or_default().into());
+            ui.set_add_whole(folder_text.is_some());
+            ui.set_add_error("".into());
+            ui.set_add_busy(false);
+            ui.set_add_cat_rows(ModelRc::from(Rc::new(VecModel::from(add_cat_rows(&category)))));
+            ui.set_add_open(true);
+        }
+    });
+    ADD.with(|a| *a.borrow_mut() = Some(AddState { exe, category, can_copy_folder: sug.folder.is_some() }));
+}
+
+fn add_tool() {
+    let Some(exe) = pick_program() else { return };
+    let category = ADD.with(|a| a.borrow().as_ref().map(|s| s.category.clone())).unwrap_or_else(|| "More".into());
+    open_add_dialog(exe, category);
+}
+
+fn add_pick() {
+    let Some(exe) = pick_program() else { return };
+    let category = ADD.with(|a| a.borrow().as_ref().map(|s| s.category.clone())).unwrap_or_else(|| "More".into());
+    open_add_dialog(exe, category);
+}
+
+fn add_choose_cat(cat: String) {
+    ADD.with(|a| {
+        if let Some(s) = a.borrow_mut().as_mut() {
+            s.category = cat.clone();
+        }
+    });
+    with_ctx(|ctx| {
+        if let Some(ui) = ctx.ui.upgrade() {
+            ui.set_add_cat_rows(ModelRc::from(Rc::new(VecModel::from(add_cat_rows(&cat)))));
+        }
+    });
+}
+
+fn add_confirm() {
+    let Some((exe, category, can_folder)) = ADD.with(|a| a.borrow().as_ref().map(|s| (s.exe.clone(), s.category.clone(), s.can_copy_folder))) else {
+        return;
+    };
+    let Some((root, ui_weak, name, whole)) = with_ctx(|ctx| {
+        let ui = ctx.ui.upgrade()?;
+        Some((ctx.state.borrow().root.clone(), ctx.ui.clone(), ui.get_add_name().to_string(), ui.get_add_whole() && can_folder))
+    })
+    .flatten() else {
+        return;
+    };
+    with_ctx(|ctx| {
+        if let Some(ui) = ctx.ui.upgrade() {
+            ui.set_add_error("".into());
+            ui.set_add_busy(true);
+            ui.set_add_progress(tr!("Copying…", "Kopiere…").into());
+        }
+    });
+    std::thread::spawn(move || {
+        let last = AtomicUsize::new(usize::MAX);
+        let progress_ui = ui_weak.clone();
+        let on = move |done: usize, total: usize| {
+            if total == 0 {
+                return;
+            }
+            let pct = done * 100 / total;
+            if last.swap(pct, Ordering::Relaxed) != pct {
+                let _ = progress_ui.upgrade_in_event_loop(move |ui| ui.set_add_progress(tr!("Copying… {pct}%", "Kopiere… {pct}%").into()));
+            }
+        };
+        let result = custom::add(&root, &category, &name, &exe, whole, &on);
+        let _ = ui_weak.upgrade_in_event_loop(move |ui| {
+            ui.set_add_busy(false);
+            match result {
+                Ok(dir) => {
+                    ui.set_add_open(false);
+                    let name = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                    add_found_tool(&root, &name, &category);
+                    let cat = catalog::category_label(&category);
+                    show_toast(tr!("“{name}” added to {cat}", "„{name}“ zu {cat} hinzugefügt"), "ok");
+                }
+                Err(e) => ui.set_add_error(short_err(&e.to_string()).into()),
+            }
+        });
+    });
+}
+
+/// Show a tool that was just put on the drive (same as one found at startup).
+fn add_found_tool(root: &std::path::Path, name: &str, category: &str) {
+    with_ctx(|ctx| {
+        let mut st = ctx.state.borrow_mut();
+        let mut t = ToolState {
+            id: st.tools.len(),
+            name: name.to_string(),
+            title: name.to_string(),
+            summary: String::new(), // shown as "found on the drive" (see to_item_kind)
+            category: category.to_string(),
+            status: "installed".into(),
+            progress: 1.0,
+            mono: mono(name),
+            install_cat: category.to_string(),
+            ..Default::default()
+        };
+        t.cli = catalog::is_console_tool(root, category, name);
+        attach_icon(&mut t, root);
+        st.tools.push(t);
+    });
+    refresh();
+    refresh_drive_card();
+    spawn_disk_sizes();
+}
+
 // ── App self-update (see engine::selfupdate) ──
 
 enum AppUpdate {
@@ -2281,7 +2626,7 @@ fn build_tools(root: &std::path::Path) -> Vec<ToolState> {
             id: tools.len(),
             name: it.name.clone(),
             title: it.name.clone(),
-            summary: tr!("found on the drive", "auf dem Stick gefunden"),
+            summary: String::new(), // shown as "found on the drive" (see to_item_kind)
             category: it.category.clone(),
             version: it.version.clone(),
             status: "installed".into(),
@@ -2538,6 +2883,7 @@ fn spawn_disk_sizes() {
 
 /// Switch the stick root: persist it, rebuild the tool list + categories, refresh.
 fn set_root(new_root: PathBuf) {
+    HEALTH.with(|h| *h.borrow_mut() = Health::Idle);
     save_root(&new_root);
     maxtrix_engine::fsutil::cleanup_stale(&new_root);
     catalog::migrate_legacy_categories(&new_root);
@@ -2890,6 +3236,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ui.on_export_list(export_list);
     ui.on_install_list_missing(install_list_missing);
     ui.on_app_update_clicked(app_update_clicked);
+    ui.on_health_action(health_action);
+    ui.on_add_tool(add_tool);
+    ui.on_add_pick(add_pick);
+    ui.on_add_choose_cat(|c| add_choose_cat(c.to_string()));
+    ui.on_add_confirm(add_confirm);
     ui.on_delete_list(|n| delete_list(n.to_string()));
     ui.on_toggle_list_open(|n| toggle_list_open(n.to_string()));
     ui.on_list_tool_clicked(list_tool_clicked);

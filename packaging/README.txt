@@ -31,6 +31,12 @@ USAGE
   - "Updates": shows when a newer version is available.
   - "My lists" (left): your own collections. Add tools with the list icon at the
     top right of a card, or drag that icon onto a list.
+  - Drive check: "Installed" has a bar on top. "Check now" finds tools that no
+    longer start and leftovers of cancelled installs; "Repair" removes the
+    leftovers and reinstalls broken catalog tools (their settings are kept).
+  - Own programs: "Add own tool..." in the same bar. Pick the program's EXE,
+    give it a name and a category; its folder is copied to Tools\ and it
+    starts like any other tool.
   - Share a list: open it and click "Export...". On another stick, import the
     file with the arrow icon next to "My lists", then "Install missing".
     Tools come only from the built-in catalog, never from the file.

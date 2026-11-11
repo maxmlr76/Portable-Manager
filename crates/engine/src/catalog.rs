@@ -16,7 +16,7 @@ use crate::{fsutil, net, persist};
 /// Name of the per-tool install-metadata file written into each tool dir.
 const META_FILE: &str = ".maxtrix.json";
 /// Name of the per-tool launch profile.
-const LAUNCH_FILE: &str = ".maxtrix-launch.json";
+pub(crate) const LAUNCH_FILE: &str = ".maxtrix-launch.json";
 
 /// Shared install root for auto-installed plugins/runtimes (e.g. a JDK).
 pub const RUNTIME_CAT: &str = "_runtime";

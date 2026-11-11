@@ -32,6 +32,13 @@ BENUTZUNG
   - "Meine Listen" (links): eigene Sammlungen. Tools ueber das Listen-Symbol
     oben rechts auf einer Karte hinzufuegen oder das Symbol auf eine Liste
     ziehen. Der Pfeil vor einer Liste klappt ihre Tools direkt links auf.
+  - Stick-Pruefung: In "Installiert" steht oben eine Leiste. "Jetzt pruefen"
+    findet Tools, die nicht mehr starten, und Reste abgebrochener
+    Installationen; "Reparieren" entfernt die Reste und installiert kaputte
+    Katalog-Tools neu (ihre Einstellungen bleiben).
+  - Eigene Programme: "Eigenes Tool..." in derselben Leiste. Die EXE des
+    Programms waehlen, Name und Kategorie vergeben; der Ordner wird nach
+    Tools\ kopiert und startet wie jedes andere Tool.
   - Liste weitergeben: Liste oeffnen, "Exportieren..." klicken. Auf einem
     anderen Stick die Datei ueber das Pfeil-Symbol neben "Meine Listen"
     importieren, dann "Fehlende installieren". Die Tools kommen nur aus dem

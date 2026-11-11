@@ -4,6 +4,8 @@
 //! hashing it -> verify -> unpack into a staging folder next to the tool ->
 //! carry over user data (`persist`) -> swap it in for `Tools\<Category>\<Name>\`.
 
+pub mod custom;
+pub mod health;
 pub mod i18n;
 pub mod manifest;
 pub mod net;

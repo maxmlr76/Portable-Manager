@@ -19,6 +19,10 @@ The user interface is available in English and German (EN / DE switch at the bot
 - **Drive-independent**: paths are stored relative to the stick, so the drive letter can change
 - **Terminal for command-line tools** with the tool on the `PATH`
 - **Your own lists**, drag and drop, and a quick-launch window in the system tray
+- **Drive check**: finds tools that no longer start (missing files, a deleted runtime) and
+  leftovers of cancelled installs; catalog tools are repaired by reinstalling, settings stay
+- **Your own programs**: add any portable program to the drive with a launch entry, an icon
+  and a category
 - **Share lists**: export a list to a file, import it on another stick and install everything
   missing in one click (only from the curated catalog)
 - **Updates itself**: a newer release shows up in the sidebar; the download is checked against

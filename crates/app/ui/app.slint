@@ -24,6 +24,7 @@ struct ToolItem {
     cli: bool,          // command-line tool → "Terminal" instead of "Launch"
     glyph: string,      // header: icon kind of the category
     count: int,         // header: number of tools in the section
+    lines: int,         // drive-check bar: extra lines of findings
 }
 
 struct DriveOption {
@@ -947,6 +948,21 @@ export component MainWindow inherits Window {
     callback import-list();
     callback export-list();
     callback install-list-missing();
+    // Drive check (bar on top of "Installed") and adding own tools.
+    callback health-action();
+    callback add-tool();
+    in-out property <bool> add-open: false;
+    in property <string> add-exe;
+    in-out property <string> add-name;
+    in property <[ChipRow]> add-cat-rows;
+    in property <string> add-folder-text;   // "" = only the file can be copied
+    in-out property <bool> add-whole: true;
+    in property <string> add-error;
+    in property <bool> add-busy;
+    in property <string> add-progress;
+    callback add-pick();
+    callback add-choose-cat(string);
+    callback add-confirm();
     // True while any install/update runs (the drive glow then circles).
     in property <bool> busy: false;
     // Confirmation for destructive actions (filled by Rust, accepted via confirm-accept).
@@ -1057,6 +1073,7 @@ export component MainWindow inherits Window {
     callback drawer-close();
 
     changed new-list-open => { if (!self.new-list-open) { key-handler.focus(); } }
+    changed add-open => { if (!self.add-open) { key-handler.focus(); } }
     changed list-menu-open => { if (!self.list-menu-open) { key-handler.focus(); } }
     changed drawer-open => { if (!self.drawer-open) { key-handler.focus(); } }
 
@@ -1079,6 +1096,7 @@ export component MainWindow inherits Window {
             else if (root.close-ask-open) { root.close-ask-open = false; }
             else if (root.confirm-open) { root.confirm-open = false; }
             else if (root.new-list-open) { root.new-list-open = false; }
+            else if (root.add-open) { if (!root.add-busy) { root.add-open = false; } }
             else if (root.list-menu-open) { root.list-menu-open = false; }
             else if (root.picker-open) { root.close-picker(); }
             else if (root.drawer-open) { root.drawer-close(); }
@@ -1545,10 +1563,32 @@ export component MainWindow inherits Window {
                         // or card content runs past the row.
                         height: row.kind == "header" ? 42px
                             : row.kind == "updateall" || row.kind == "listbar" ? 62px
+                            : row.kind == "health" ? 62px + row.a.lines * 16px
                             : row.kind == "feature" ? 130px
                             : row.kind == "pair" ? 190px
                             : 98px;
                         if row.kind == "header" : HeaderRow { number: row.a.mono; title: row.a.name; star: row.a.star; glyph: row.a.glyph; count: row.a.count; }
+                        if row.kind == "health" : Rectangle {
+                            border-radius: Mx.radius-l;
+                            background: Render.soft ? Mx.card-flat : Mx.card;
+                            border-width: 1px; border-color: row.a.status == "problems" ? Mx.danger-line : Mx.line-strong;
+                            HorizontalLayout {
+                                padding-left: 16px; padding-right: 16px; padding-top: 10px; padding-bottom: 10px; spacing: 10px;
+                                VerticalLayout {
+                                    alignment: center; spacing: 2px; horizontal-stretch: 1;
+                                    Text { text: row.a.title; color: row.a.status == "problems" ? Mx.danger : Mx.text; font-size: 15px; font-weight: 600; overflow: elide; min-width: 0; }
+                                    Text { text: row.a.summary; color: row.a.status == "problems" ? Mx.silver : Mx.muted; font-size: 11px; overflow: elide; min-width: 0; }
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    GhostButton { label: @tr("Add own tool…"); min-width: 120px; clicked => { root.add-tool(); } }
+                                }
+                                if row.a.detail != "" : VerticalLayout {
+                                    alignment: center;
+                                    ChromeButton { label: row.a.detail; min-width: 140px; clicked => { root.health-action(); } }
+                                }
+                            }
+                        }
                         if row.kind == "listbar" : Rectangle {
                             border-radius: Mx.radius-l;
                             background: Render.soft ? Mx.card-flat : Mx.card;
@@ -1940,6 +1980,81 @@ export component MainWindow inherits Window {
             Rectangle { horizontal-stretch: 1; }
             GhostButton { label: @tr("Cancel"); clicked => { root.new-list-open = false; } }
             ChromeButton { label: @tr("Create"); clicked => { root.create-list(root.new-list-name); } }
+          }
+        }
+      }
+
+      // ── Add own tool (a program that is not in the catalog) ──
+      if root.add-open : Rectangle {
+        background: Mx.scrim; opacity: 0.55;
+        TouchArea { clicked => { if (!root.add-busy) { root.add-open = false; } } }
+      }
+      if root.add-open : Rectangle {
+        width: 500px;
+        height: ad-lay.preferred-height;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        background: Mx.panel; border-radius: 4px; border-width: 1px; border-color: Mx.line-strong;
+        drop-shadow-color: Render.soft ? transparent : Mx.shadow; drop-shadow-blur: Render.soft ? 0px : 28px; drop-shadow-offset-y: Render.soft ? 0px : 8px;
+        TouchArea {}
+        Ticks {}
+        ad-lay := VerticalLayout {
+          padding: 20px; spacing: 10px;
+          Text { text: @tr("Add own tool"); color: Mx.text; font-size: 16px; font-weight: 700; }
+          HorizontalLayout {
+            spacing: 10px;
+            Text { text: root.add-exe; color: Mx.muted; font-size: 11.5px; overflow: elide; vertical-alignment: center; horizontal-stretch: 1; min-width: 0; }
+            if !root.add-busy : GhostButton { label: @tr("Change…"); min-width: 90px; clicked => { root.add-pick(); } }
+          }
+          Text { text: @tr("Name"); color: Mx.silver; font-size: 11px; font-weight: 600; }
+          Rectangle {
+            height: 40px; border-radius: Mx.radius-s; background: Mx.bg;
+            border-width: 1px; border-color: ad-ti.has-focus ? Mx.silver : Mx.line-strong;
+            ad-ti := TextInput {
+              x: 13px; width: parent.width - 26px; height: parent.height;
+              color: Mx.text; font-size: 13px; vertical-alignment: center; single-line: true;
+              text <=> root.add-name;
+              accepted => { if (!root.add-busy) { root.add-confirm(); } }
+            }
+          }
+          Text { text: @tr("Category"); color: Mx.silver; font-size: 11px; font-weight: 600; }
+          VerticalLayout {
+            spacing: 7px;
+            for cr in root.add-cat-rows : HorizontalLayout {
+              alignment: start; spacing: 7px;
+              for c in cr.chips : FilterChip {
+                label: c.label; glyph: c.icon; active: c.active;
+                clicked => { if (!root.add-busy) { root.add-choose-cat(c.name); } }
+              }
+            }
+          }
+          if root.add-folder-text != "" : Rectangle {
+            height: wf-lay.preferred-height;
+            wf-lay := HorizontalLayout {
+              spacing: 10px; padding-top: 4px; padding-bottom: 4px;
+              VerticalLayout {
+                alignment: center;
+                Rectangle {
+                  width: 16px; height: 16px; border-radius: 3px;
+                  border-width: root.add-whole ? 0px : 1px; border-color: Mx.line-strong;
+                  background: root.add-whole ? Mx.chrome-flat : transparent;
+                  if root.add-whole : Icon { kind: "check"; tint: Mx.on-chrome; width: 12px; height: 12px; x: 2px; y: 2px; }
+                }
+              }
+              Text { text: root.add-folder-text; color: Mx.silver; font-size: 12px; wrap: word-wrap; vertical-alignment: center; horizontal-stretch: 1; }
+            }
+            TouchArea { mouse-cursor: pointer; clicked => { if (!root.add-busy) { root.add-whole = !root.add-whole; } } }
+          }
+          if root.add-folder-text == "" : Text {
+            text: @tr("Only the program file is copied: its folder is a user or system folder, or very large.");
+            color: Mx.muted; font-size: 11.5px; wrap: word-wrap;
+          }
+          if root.add-error != "" : Text { text: root.add-error; color: Mx.danger; font-size: 12px; wrap: word-wrap; }
+          HorizontalLayout {
+            spacing: 8px; padding-top: 4px;
+            Rectangle { horizontal-stretch: 1; }
+            if !root.add-busy : GhostButton { label: @tr("Cancel"); clicked => { root.add-open = false; } }
+            ChromeButton { label: root.add-busy ? root.add-progress : @tr("Add"); min-width: 120px; clicked => { if (!root.add-busy) { root.add-confirm(); } } }
           }
         }
       }

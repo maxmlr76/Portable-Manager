@@ -244,3 +244,24 @@ msgstr "Exportieren…"
 msgid "Install missing ({})"
 msgstr "Fehlende installieren ({})"
 
+msgid "Add own tool…"
+msgstr "Eigenes Tool…"
+
+msgid "Add own tool"
+msgstr "Eigenes Tool hinzufügen"
+
+msgid "Change…"
+msgstr "Ändern…"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Category"
+msgstr "Kategorie"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+msgid "Only the program file is copied: its folder is a user or system folder, or very large."
+msgstr "Nur die Programmdatei wird kopiert: ihr Ordner ist ein Benutzer- oder Systemordner oder sehr groß."
+
